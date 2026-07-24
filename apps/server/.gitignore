@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[oc]
+*.egg-info
+build/
+dist/
+wheels/
+.venv/
+.env
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+alembic/versions/*.pyc

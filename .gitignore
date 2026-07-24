@@ -1,0 +1,22 @@
+# Root
+.env
+.DS_Store
+*.log
+
+# Python
+**/__pycache__/
+**/.venv/
+**/*.egg-info/
+
+# Node
+**/node_modules/
+**/.output/
+**/dist/
+**/.tanstack/
+**/.nitro/
+**/.vinxi/
+
+# IDE
+.idea/
+.vscode/
+!apps/web/.vscode/
