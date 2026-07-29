@@ -10,7 +10,7 @@ Full product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 
 ## Stack
 
-- **Web** — TanStack Start (React) + Tailwind — `apps/web`
+- **Web** — React + Vite SPA + TanStack Router + TanStack Query + Zod + Zustand + shadcn — `apps/web`
 - **API** — Python 3.14 + UV + FastAPI + SQLAlchemy — `apps/server`
 - **DB** — PostgreSQL 16
 - **Run** — Docker Compose (`web` · `api` · `db`)
@@ -99,17 +99,20 @@ Main variables:
 ```
 better-intra/
 ├── apps/
-│   ├── web/          # TanStack Start frontend
+│   ├── web/          # React + Vite SPA
 │   └── server/       # FastAPI backend
 ├── docs/             # Subject, API notes, specs
 ├── docker-compose.yml
 └── AGENTS.md         # Dev / agent context
 ```
 
+Front layering: [`apps/web/ARCHITECTURE.md`](apps/web/ARCHITECTURE.md).
+
 ## Resources
 
 - [42 API](https://api.intra.42.fr/apidoc) — see also `docs/doc-api42.txt`
-- [TanStack Start](https://tanstack.com/start)
+- [TanStack Router](https://tanstack.com/router)
+- [TanStack Query](https://tanstack.com/query)
 - [FastAPI](https://fastapi.tiangolo.com/)
 - [UV](https://docs.astral.sh/uv/)
 - [Docker Compose](https://docs.docker.com/compose/)
