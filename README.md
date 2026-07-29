@@ -2,121 +2,82 @@
 
 # BetterIntra
 
-A modern Intra-inspired dashboard for 42. You sign in with your real 42 account, browse your real school data (read-only from the 42 API), and use social / organisational features stored in our own database (slots, friends, chat, notifications, etc.).
+A modern Intra-inspired dashboard for 42. Sign in with 42, read school data (42 API), social/org features in our Postgres.
 
-> Status: **scaffolding only**. Stack and Docker are ready; product features (OAuth, profile, …) are not implemented yet.
+> Status: **scaffolding**. API code exists; front (Swan) and Docker/HTTPS (Ayoub) are ownership stubs.
 
-Full product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
+Product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 
-## Stack
+## Ownership
 
-- **Web** — React + Vite SPA + TanStack Router + TanStack Query + Zod + Zustand + shadcn — `apps/web`
+| Who | Owns |
+|---|---|
+| **Swan** | Frontend — [`apps/web/README.md`](apps/web/README.md) |
+| **Malik** | Backend API — `apps/server` |
+| **Ayoub** | Docker / HTTPS / run éval — [`docs/devops.md`](docs/devops.md) |
+| **Kylian** | Recommendations scoring |
+
+## Stack (backend today)
+
 - **API** — Python 3.14 + UV + FastAPI + SQLAlchemy — `apps/server`
 - **DB** — PostgreSQL 16
-- **Run** — Docker Compose (`web` · `api` · `db`)
+- **Web / Compose** — not in repo yet (Swan / Ayoub)
 
-## Prerequisites
+## Postgres without Docker (dev)
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose v2)
-- For local hybrid dev only: [Node.js 22+](https://nodejs.org/), [pnpm](https://pnpm.io/), [UV](https://docs.astral.sh/uv/)
-
-## Quick start (Docker — recommended)
-
-One command launches the whole stack.
+Until Ayoub ships Compose, run Postgres locally (macOS / Homebrew):
 
 ```bash
-# from the repo root
-cp apps/server/.env.example apps/server/.env
+brew install postgresql@16
+brew services start postgresql@16
 
-docker compose up --build
+createuser -s betterintra 2>/dev/null || true
+psql -d postgres -c "ALTER ROLE betterintra WITH LOGIN PASSWORD 'betterintra';"
+createdb -O betterintra betterintra 2>/dev/null || true
 ```
 
-Then open:
-
-| Service | URL |
-|---|---|
-| Web app | http://localhost:3000 |
-| API docs (Swagger) | http://localhost:8000/docs |
-| API health | http://localhost:8000/health |
-| DB health | http://localhost:8000/health/db |
-
-Stop everything:
+Matches `apps/server/.env.example` :
+`postgresql+psycopg://betterintra:betterintra@localhost:5432/betterintra`
 
 ```bash
-docker compose down
+brew services stop postgresql@16   # stop when done
 ```
 
-Useful Compose commands:
+## Run the API (dev, without Docker)
 
 ```bash
-docker compose ps              # running services
-docker compose logs -f         # all logs
-docker compose logs -f web     # web only
-docker compose logs -f api     # api only
-docker compose up --build -d   # background mode
-```
-
-## Local development (hybrid)
-
-Best for day-to-day coding: Postgres in Docker, API and web on the host (hot reload).
-
-```bash
-# 1) Database
-docker compose up db -d
-
-# 2) API
-cp apps/server/.env.example apps/server/.env
 cd apps/server
+cp .env.example .env
 uv sync
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 3) Web (other terminal)
-cd apps/web
-pnpm install
-pnpm dev
 ```
 
-Same URLs as above (`:3000` / `:8000`).
+| URL | |
+|---|---|
+| Swagger | http://localhost:8000/docs |
+| Health | http://localhost:8000/health |
+| DB health | http://localhost:8000/health/db |
+
+Front: [`apps/web/README.md`](apps/web/README.md).
 
 ## Environment
 
-| File | Role |
-|---|---|
-| `.env.example` | Root / shared hints |
-| `apps/server/.env.example` | API settings (copy to `apps/server/.env`) |
+Never commit real `.env` or 42 secrets.
 
-Never commit real `.env` files or 42 OAuth secrets.
+- `DATABASE_URL` — Postgres
+- `CORS_ORIGINS` — front origin(s)
+- `FORTY_TWO_*` — OAuth (later)
 
-Main variables:
-
-- `DATABASE_URL` — Postgres connection (SQLAlchemy / psycopg)
-- `CORS_ORIGINS` — allowed front origins
-- `VITE_API_URL` — API URL exposed to the browser
-- `FORTY_TWO_*` — OAuth (wired later)
-
-## Project layout
+## Layout
 
 ```
 better-intra/
-├── apps/
-│   ├── web/          # React + Vite SPA
-│   └── server/       # FastAPI backend
-├── docs/             # Subject, API notes, specs
-├── docker-compose.yml
-└── AGENTS.md         # Dev / agent context
+├── apps/web/       # Swan
+├── apps/server/    # Malik
+├── docs/           # CDC, devops brief, …
+└── AGENTS.md
 ```
-
-Front layering: [`apps/web/ARCHITECTURE.md`](apps/web/ARCHITECTURE.md).
-
-## Resources
-
-- [42 API](https://api.intra.42.fr/apidoc) — see also `docs/doc-api42.txt`
-- [TanStack Router](https://tanstack.com/router)
-- [TanStack Query](https://tanstack.com/query)
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [UV](https://docs.astral.sh/uv/)
-- [Docker Compose](https://docs.docker.com/compose/)
 
 ### AI usage
 
-AI assistants are used for scaffolding, architecture notes, and boilerplate. All generated code is reviewed and owned by the team before evaluation.
+AI assistants help with scaffolding and notes. Team reviews and owns all code before evaluation.
