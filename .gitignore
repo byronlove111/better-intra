@@ -16,7 +16,11 @@
 **/.nitro/
 **/.vinxi/
 
-# IDE
+# IDE / local agent
 .idea/
 .vscode/
 !apps/web/.vscode/
+.cursor/
+
+# Local UI mock (separate deploy / not part of product repo)
+/maquette/
