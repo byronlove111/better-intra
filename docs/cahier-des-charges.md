@@ -107,7 +107,7 @@ Seuil sujet = **14** ; modules incomplets = 0 à l’éval.
 
 Matching déterministe : même projet / avancée proche + overlap logtime (+ bonus « à l’école maintenant »). Pool v1 = users BetterIntra avec Intra lié. Endpoint `GET /recommendations` + UI avec **raisons** + CTA profil/ami/DM.
 
-**README (EN) obligatoire** — section *Custom module (Minor) — Peer recommendations* : why / challenges (cache API 42, rate limit, scoring explicable) / value / why 1 pt. Draft détaillé : conserver depuis l’historique git v1.4 §5.1 ou `docs/concept-equipe.md` si besoin.
+**README (EN) obligatoire** — section *Custom module (Minor) — Peer recommendations* : why / challenges (cache API 42, rate limit, scoring explicable) / value / why 1 pt. Draft détaillé : conserver depuis l’historique git v1.4 §5.1 si besoin.
 
 Owners : Kylian (scoring) · Swan (UI) · Malik (proxy/cache 42).
 
