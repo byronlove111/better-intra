@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./apps/server
+    env_file: .env
+    environment:
+      # Surcharge volontaire : .env.DATABASE_URL vise "localhost" (dev Homebrew
+      # hors Docker, voir README). Dans le réseau du compose, Postgres est
+      # joignable via le nom du service "db", pas "localhost" ni 127.0.0.1.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    # Code monté en live : les changements sur apps/server/app sont visibles
+    # dans le container sans rebuild d'image (le .venv, lui, reste celui buildé
+    # dans l'image — un ajout de dépendance nécessite toujours un rebuild).
+    volumes:
+      - ./apps/server/app:/app/app
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    ports:
+      # Publié pour du debug direct (curl, Swagger) pendant le dev. Le
+      # navigateur, lui, doit toujours passer par https://localhost (proxy) —
+      # jamais par ce port en clair. Voir docs/deploiement.md.
+      - "8000:8000"
+    depends_on:
+      - db
+
+  proxy:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    ports:
+      - "8080:80"
+      - "8443:443"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
