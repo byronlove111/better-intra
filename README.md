@@ -23,9 +23,18 @@ Product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 - **DB** — PostgreSQL 16
 - **Web / Compose** — not in repo yet (Swan / Ayoub)
 
-## Postgres without Docker (dev)
+## Run with Docker (recommandé)
 
-Until Ayoub ships Compose, run Postgres locally (macOS / Homebrew):
+```bash
+cp .env.example .env   # puis remplis les secrets 42 OAuth
+make up
+```
+
+API en HTTPS : https://localhost:8443/docs. Détails, ports, troubleshooting : [`docs/deploiement.md`](docs/deploiement.md).
+
+## Postgres without Docker (dev alternatif)
+
+Si tu préfères ne pas passer par Compose, Postgres local (macOS / Homebrew) :
 
 ```bash
 brew install postgresql@16
