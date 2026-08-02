@@ -7,13 +7,20 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.auth_schemas import FortyTwoAuthorizeResponse, LoginRequest, RegisterRequest, TokenResponse
+from app.auth.auth_schemas import (
+    FortyTwoAuthorizeResponse,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+)
 from app.auth.auth_service import (
     build_forty_two_authorize_url,
     create_access_token,
     create_oauth_state,
     create_refresh_token,
     decode_oauth_state,
+    decode_refresh_token,
     exchange_code_for_tokens,
     extract_avatar_url,
     fetch_forty_two_me,
@@ -67,6 +74,39 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
+        )
+
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+        user=UserOut.model_validate(user),
+    )
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    summary="Refresh access token",
+    description=(
+        "Exchange a valid refresh JWT for a new access token and a new refresh token. "
+        "Use this when the access token expired, without asking for the password again."
+    ),
+)
+def refresh(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    try:
+        payload = decode_refresh_token(body.refresh_token)
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        ) from None
+
+    user = user_repository.get_by_id(db, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
         )
 
     return TokenResponse(
