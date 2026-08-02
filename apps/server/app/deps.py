@@ -45,3 +45,13 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+def require_intra_linked(current_user: User = Depends(get_current_user)) -> User:
+    """Block routes that need a linked 42 Intra account."""
+    if not current_user.is_intra_linked():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Link your Intra account first",
+        )
+    return current_user

@@ -46,6 +46,13 @@ def decode_access_token(token: str) -> dict[str, Any]:
     return payload
 
 
+def decode_refresh_token(token: str) -> dict[str, Any]:
+    payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    if payload.get("type") != "refresh":
+        raise jwt.InvalidTokenError("Invalid token type")
+    return payload
+
+
 def require_forty_two_oauth_config() -> None:
     if not settings.forty_two_client_id or not settings.forty_two_client_secret:
         raise RuntimeError("42 OAuth is not configured")

@@ -20,5 +20,9 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 class FortyTwoAuthorizeResponse(BaseModel):
     authorize_url: str

@@ -49,3 +49,20 @@ def link_forty_two(
     db.commit()
     db.refresh(user)
     return user
+
+
+def update_forty_two_tokens(
+    db: Session,
+    user: User,
+    *,
+    access_token: str,
+    refresh_token: str | None,
+    token_expires_at: datetime | None,
+) -> User:
+    user.forty_two_access_token = access_token
+    user.forty_two_refresh_token = refresh_token
+    user.forty_two_token_expires_at = token_expires_at
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
