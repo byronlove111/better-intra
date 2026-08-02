@@ -74,11 +74,12 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Next steps
 
-1. OAuth 42 + session/JWT  
-2. Models / Alembic migrations  
-3. Proxy profile / projects / events  
-4. Slots CRUD + public API  
-5. Friends, chat, WebSockets  
-6. Analytics / PDF  
-7. HTTPS + Compose (Ayoub)  
-8. Privacy Policy + Terms of Service
+1. Push remaining local proxy 42 work (if not merged)
+2. Friends (CRUD)
+3. Profile bio (JWT) + **public API profiles** (API key, rate limit, OpenAPI) — Major +2
+4. Chat DM + WebSockets (online, messages, notifs)
+5. Notifications persistées
+6. Analytics logtime + export PDF/CSV
+7. Peer recommendations
+8. HTTPS + Compose (Ayoub)
+9. Privacy Policy + Terms of Service + i18n (Swan)

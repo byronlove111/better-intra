@@ -1,5 +1,7 @@
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import HTTPException, status
@@ -70,14 +72,108 @@ def get_valid_forty_two_access_token(db: Session, user: User) -> str:
     return access_token
 
 
-def fetch_intra_me(access_token: str) -> dict[str, Any]:
-    with httpx.Client(timeout=30.0) as client:
-        response = client.get(
-            f"{settings.forty_two_api_base_url}/me",
-            headers={"Authorization": f"Bearer {access_token}"},
+def _raise_forty_two_http_error(response: httpx.Response) -> None:
+    if response.status_code == 401:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Intra token rejected. Link your Intra account again.",
         )
-        response.raise_for_status()
-        return response.json()
+    if response.status_code == 403:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this Intra resource",
+        )
+    if response.status_code == 404:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Intra resource not found")
+    if response.status_code == 429:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="42 API rate limit exceeded. Retry shortly.",
+        )
+    raise HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=f"42 API error ({response.status_code})",
+    )
+
+
+def forty_two_get(
+    access_token: str,
+    path: str,
+    params: dict[str, Any] | None = None,
+) -> tuple[Any, dict[str, str]]:
+    """GET a 42 API path with the user's OAuth token. Returns (json, response headers)."""
+    require_forty_two_oauth_config()
+    clean_params = {key: value for key, value in (params or {}).items() if value is not None}
+    url = f"{settings.forty_two_api_base_url}{path}"
+    if clean_params:
+        url = f"{url}?{urlencode(clean_params, doseq=True)}"
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            response = client.get(url, headers={"Authorization": f"Bearer {access_token}"})
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to reach 42 API",
+        ) from exc
+
+    if response.status_code >= 400:
+        _raise_forty_two_http_error(response)
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Invalid JSON from 42 API",
+        ) from exc
+
+    headers = {key.lower(): value for key, value in response.headers.items()}
+    return payload, headers
+
+
+def page_meta_from_headers(
+    headers: dict[str, str],
+    *,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
+    total_raw = headers.get("x-total")
+    total = int(total_raw) if total_raw and total_raw.isdigit() else None
+    return {"page": page, "page_size": page_size, "total": total}
+
+
+def fetch_intra_user(access_token: str, login_or_id: str) -> dict[str, Any]:
+    payload, _ = forty_two_get(access_token, f"/users/{login_or_id}")
+    if not isinstance(payload, dict) or payload.get("id") is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unexpected user payload from 42 API",
+        )
+    return payload
+
+
+def resolve_forty_two_user_id(access_token: str, login_or_id: str) -> int:
+    user = fetch_intra_user(access_token, login_or_id)
+    return int(user["id"])
+
+
+def fetch_intra_me(access_token: str) -> dict[str, Any]:
+    payload, _ = forty_two_get(access_token, "/me")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unexpected /me payload")
+    return payload
+
+
+def primary_campus_id(me: dict[str, Any]) -> int | None:
+    campus_users = me.get("campus_users") or []
+    for item in campus_users:
+        if item.get("is_primary"):
+            return item.get("campus_id")
+    campus = me.get("campus") or []
+    if campus:
+        return campus[0].get("id")
+    return None
 
 
 def build_intra_profile(me: dict[str, Any]) -> dict[str, Any]:
@@ -122,3 +218,135 @@ def build_intra_profile(me: dict[str, Any]) -> dict[str, Any]:
         "campus": campus,
         "cursus": cursus,
     }
+
+
+def build_project(item: dict[str, Any]) -> dict[str, Any]:
+    project = item.get("project") or {}
+    return {
+        "id": item.get("id"),
+        "status": item.get("status"),
+        "final_mark": item.get("final_mark"),
+        "validated": item.get("validated?"),
+        "marked_at": item.get("marked_at"),
+        "project_id": project.get("id"),
+        "project_name": project.get("name"),
+        "project_slug": project.get("slug"),
+        "cursus_ids": item.get("cursus_ids") or [],
+        "updated_at": item.get("updated_at"),
+    }
+
+
+def build_event(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": item.get("id"),
+        "name": item.get("name"),
+        "description": item.get("description"),
+        "location": item.get("location"),
+        "kind": item.get("kind"),
+        "max_people": item.get("max_people"),
+        "nbr_subscribers": item.get("nbr_subscribers"),
+        "begin_at": item.get("begin_at"),
+        "end_at": item.get("end_at"),
+        "campus_ids": item.get("campus_ids") or [],
+        "cursus_ids": item.get("cursus_ids") or [],
+    }
+
+
+def _team_project_name(team: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    if not team:
+        return None, None
+    project_gitlab = team.get("project_gitlab_path")
+    name = team.get("name") or project_gitlab
+    # Prefer nested project if present on some payloads
+    project = team.get("project") or {}
+    return project.get("name") or name, project.get("slug")
+
+
+def build_evaluation(item: dict[str, Any], *, role: str) -> dict[str, Any]:
+    team = item.get("team") or {}
+    project_name, project_slug = _team_project_name(team)
+    corrector = item.get("corrector") or {}
+    corrected = item.get("correcteds") or []
+    return {
+        "id": item.get("id"),
+        "role": role,
+        "begin_at": item.get("begin_at"),
+        "final_mark": item.get("final_mark"),
+        "comment": item.get("comment"),
+        "project_name": project_name,
+        "project_slug": project_slug,
+        "corrector_login": corrector.get("login"),
+        "corrected_logins": [user.get("login") for user in corrected if user.get("login")],
+    }
+
+
+def _parse_dt(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def build_location_session(item: dict[str, Any]) -> dict[str, Any]:
+    begin_at = _parse_dt(item.get("begin_at")) if isinstance(item.get("begin_at"), str) else item.get("begin_at")
+    end_at = _parse_dt(item.get("end_at")) if isinstance(item.get("end_at"), str) else item.get("end_at")
+    duration = None
+    if isinstance(begin_at, datetime) and isinstance(end_at, datetime):
+        duration = max(int((end_at - begin_at).total_seconds()), 0)
+    return {
+        "id": item.get("id"),
+        "begin_at": begin_at,
+        "end_at": end_at,
+        "host": item.get("host"),
+        "campus_id": item.get("campus_id"),
+        "duration_seconds": duration,
+    }
+
+
+def build_logtime(
+    locations: list[dict[str, Any]],
+    *,
+    begin_at: datetime | None,
+    end_at: datetime | None,
+) -> dict[str, Any]:
+    sessions = [build_location_session(item) for item in locations]
+    by_day: dict[str, int] = defaultdict(int)
+    total = 0
+    for session in sessions:
+        seconds = session.get("duration_seconds") or 0
+        total += seconds
+        begin = session.get("begin_at")
+        if isinstance(begin, datetime):
+            by_day[begin.astimezone(UTC).date().isoformat()] += seconds
+
+    days = [{"date": day, "duration_seconds": seconds} for day, seconds in sorted(by_day.items())]
+    return {
+        "begin_at": begin_at,
+        "end_at": end_at,
+        "total_seconds": total,
+        "days": days,
+        "sessions": sessions,
+    }
+
+
+def build_user_summary(user: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": user.get("id"),
+        "login": user.get("login"),
+        "displayname": user.get("displayname") or user.get("usual_full_name"),
+        "avatar_url": extract_avatar_url(user),
+        "location": user.get("location"),
+        "pool_month": user.get("pool_month"),
+        "pool_year": user.get("pool_year"),
+        "kind": user.get("kind"),
+    }
+
+
+def build_public_user_profile(user: dict[str, Any]) -> dict[str, Any]:
+    profile = build_intra_profile(user)
+    # Never expose another student's email through our API
+    profile.pop("email", None)
+    summary = build_user_summary(user)
+    return {**summary, **{k: profile[k] for k in ("wallet", "correction_point", "campus", "cursus")}}

@@ -1,6 +1,8 @@
 # Cahier des charges — BetterIntra
 
-**Cadre :** ft_transcendence Surprise · **Cible :** 18 pts · **v1.7** · 29 juil. 2026
+**Cadre :** ft_transcendence Surprise · **Cible :** 18 pts · **v1.9** · 3 août 2026
+
+> **v1.9** — Major *Web public API* rétabli : **profils BetterIntra (bio…)** à la place des slots. Slots restent hors scope.
 
 ---
 
@@ -16,8 +18,8 @@ Intra 42 moderne : compte BetterIntra (email/password), **lien OAuth 42** pour l
 
 | Mode | Accès |
 |---|---|
-| Email + password | Compte local (exigence sujet). Features BetterIntra (amis, chat, slots, notifs…). |
-| + OAuth 42 lié | Tokens en BDD → profil, projets, events, évals, logtime, reco… |
+| Email + password | Compte local (exigence sujet). Features BetterIntra (amis, chat, profil étendu, notifs…). |
+| + OAuth 42 lié | Tokens en BDD → profil 42, projets, events, évals, logtime, reco… |
 
 Email/password **ne remplace pas** OAuth (module +1). OAuth **ne remplace pas** email/password (base obligatoire).
 
@@ -29,7 +31,7 @@ Email/password **ne remplace pas** OAuth (module +1). OAuth **ne remplace pas** 
 
 Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’appel API 42).
 
-- **Profil** — login, avatar, displayname, campus, wallet et points de correction (lecture)
+- **Profil 42** — login, avatar, displayname, campus, wallet et points de correction (lecture)
 - **Cursus** — niveau, grade, progression
 - **Projets** — liste des projets, statut, notes
 - **Events** — agenda campus + recherche avancée (filtres, tri, pagination)
@@ -39,19 +41,20 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 
 ### 3.2 Features BetterIntra (notre BDD / notre logique)
 
-- **Slots d’évaluation** — créer, lister, réserver, annuler, supprimer des créneaux *simulés* (pas les vrais slots Intra)
-- **API publique des slots** — ≥ 5 endpoints CRUD, clé API, rate limit, documentation OpenAPI
+- **Profil étendu** — champs BetterIntra éditables (au min. **bio** ; éventuellement status / liens) en CRUD JWT pour le front
+- **API publique des profils** — ≥ 5 endpoints CRUD, **clé API**, **rate limit**, documentation OpenAPI (Major Web public API — voir §6)
 - **Amis** — ajouter / retirer, liste d’amis
 - **Statut online** — présence en temps réel des amis connectés à BetterIntra
 - **Chat DM** — messages privés 1-to-1
-- **Notifications** — centre de notifs (slots, amis, messages…) persistées + push live
-- **WebSockets** — online, nouveaux messages, notifs, events slots
+- **Notifications** — centre de notifs (amis, messages…) persistées + push live
+- **WebSockets** — online, nouveaux messages, notifs
 - **Analytics logtime** — calendrier / graphiques, filtres de dates, **export** (PDF/CSV inclus dans ce module)
 - **i18n** — au moins 3 langues complètes, language switcher, textes user-facing traduisibles
 - **Recommandations** — suggestions de personnes à contacter (même projet / avancée proche + overlap d’horaires à l’école) ; scoring déterministe ; module of choice (voir §5.1)
 
 ### 3.3 Hors scope
 
+- **Slots d’évaluation** (simulés ou réels) — coupe v1.8, non repris
 - Toute **écriture** sur l’API 42 (subscribe projet, vrais slots, wallet…)
 - Moulinette, shop, map clusters live
 - Affichage achievements 42 / skills
@@ -67,10 +70,10 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 |---|---|
 | Login / Signup | Email + password · lien OAuth 42 |
 | Dashboard | Synthèse (niveau, points, prochaines évals/events, notifs) |
-| Profil | Soi / autres · data 42 si lié · amis |
+| Profil | Soi / autres · data 42 si lié · bio BetterIntra · amis |
 | Projets | Liste, statut, notes |
 | Agenda | Events + recherche avancée |
-| Évaluations | Historique + Manage Slots |
+| Évaluations | Historique (correcteur / corrigé) |
 | Logtime | Calendrier + analytics + export |
 | Amis | Liste, ajout/retrait, online |
 | Chat | Conversations DM |
@@ -90,7 +93,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 | 3 | Profil, avatar, amis, online | User Mgmt Major | 2 |
 | 4 | Chat + profil + amis | Web interaction Major | 2 |
 | 5 | WebSockets | Web realtime Major | 2 |
-| 6 | API publique slots | Web public API Major | 2 |
+| 6 | API publique profils (bio…) | Web public API Major | 2 |
 | 7 | ORM | Web Minor | 1 |
 | 8 | Notifications | Web Minor | 1 |
 | 9 | Recherche events avancée | Web Minor | 1 |
@@ -113,15 +116,28 @@ Owners : Kylian (scoring) · Swan (UI) · Malik (proxy/cache 42).
 
 ---
 
-## 6. API publique (slots)
+## 6. API publique (profils)
 
-Clé API · rate limit · docs · ≥ 5 endpoints : `GET/POST /api/slots`, `GET/PUT/DELETE /api/slots/:id`
+Ressource : profils BetterIntra (bio et champs étendus stockés **chez nous**, pas l’API 42).
+
+Exigences du Major :
+- **Clé API** (header type `X-API-Key`)
+- **Rate limit**
+- **Docs OpenAPI**
+- **≥ 5 endpoints**, ex. :
+  - `GET /api/v1/profiles`
+  - `POST /api/v1/profiles`
+  - `GET /api/v1/profiles/:id`
+  - `PUT /api/v1/profiles/:id`
+  - `DELETE /api/v1/profiles/:id`
+
+Le front app utilise plutôt le CRUD JWT (`/me/profile` ou équivalent). L’API `/api/v1/profiles` sert les clients externes / la démo du Major.
 
 ---
 
 ## 7. Temps réel
 
-WS : online · nouveaux DM · notifs · slot réservé/annulé · reconnexion propre.
+WS : online · nouveaux DM · notifs · reconnexion propre.
 
 ---
 
@@ -133,7 +149,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 ## 9. Modèle BDD (min)
 
-`User` (email/hash + lien 42 optionnel) · `Friendship` · `Slot` · `Conversation`/`Message` · `Notification` · cache reco si besoin
+`User` (email/hash + lien 42 optionnel + **bio** / champs profil) · `Friendship` · `Conversation`/`Message` · `Notification` · `ApiKey` (ou secret app pour l’API publique) · cache reco si besoin
 
 ---
 
@@ -141,7 +157,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 Docker 1 commande · HTTPS · Chrome sans warnings · `.env` + example · Privacy + Terms · README EN (rôles PO/PM/TL + modules) · commits multi-auteurs · validation inputs FE+BE
 
-**MVP ok si :** auth dual · data 42 si lié · slots UI+API publique · social+WS · analytics+export · i18n 3 langues · reco démo · compose up · README custom module.
+**MVP ok si :** auth dual · data 42 si lié · profil bio + API publique profils · social+WS · analytics+export · i18n 3 langues · reco démo · compose up · README custom module.
 
 ---
 
@@ -149,7 +165,7 @@ Docker 1 commande · HTTPS · Chrome sans warnings · `.env` + example · Privac
 
 | Rôle | Focus |
 |---|---|
-| Malik | Backend / OAuth / proxy 42 / slots / social API / WS |
+| Malik | Backend / OAuth / proxy 42 / profils + API publique / social API / WS |
 | Swan | Frontend / pages / i18n / UI reco |
 | Ayoub | DevOps / Compose / HTTPS / envs / seed démo |
 | Kylian | Scoring recommandations |
