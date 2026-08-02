@@ -14,6 +14,10 @@ def get_by_email(db: Session, email: str) -> User | None:
     return db.scalar(select(User).where(User.email == email))
 
 
+def get_by_login(db: Session, login: str) -> User | None:
+    return db.scalar(select(User).where(User.login == login))
+
+
 def get_by_forty_two_id(db: Session, forty_two_id: int) -> User | None:
     return db.scalar(select(User).where(User.forty_two_id == forty_two_id))
 
@@ -62,6 +66,14 @@ def update_forty_two_tokens(
     user.forty_two_access_token = access_token
     user.forty_two_refresh_token = refresh_token
     user.forty_two_token_expires_at = token_expires_at
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_bio(db: Session, user: User, *, bio: str) -> User:
+    user.bio = bio
     db.add(user)
     db.commit()
     db.refresh(user)

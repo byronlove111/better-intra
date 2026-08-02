@@ -41,7 +41,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 
 ### 3.2 Features BetterIntra (notre BDD / notre logique)
 
-- **Profil étendu** — champs BetterIntra éditables (au min. **bio** ; éventuellement status / liens) en CRUD JWT pour le front
+- **Profil unifié** — `GET /users/me` et `GET /users/{login}` renvoient BetterIntra + nested `intra` (42) en **un seul call**. **Bio** uniquement si Intra lié (sinon PATCH → 403, `bio`/`intra` null)
 - **API publique des profils** — ≥ 5 endpoints CRUD, **clé API**, **rate limit**, documentation OpenAPI (Major Web public API — voir §6)
 - **Amis** — ajouter / retirer, liste d’amis
 - **Statut online** — présence en temps réel des amis connectés à BetterIntra
