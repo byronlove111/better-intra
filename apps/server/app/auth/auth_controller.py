@@ -37,6 +37,11 @@ from app.users.user_schemas import UserOut
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+# ---------------------------------------------------------------------------
+# EMAIL / PASSWORD
+# ---------------------------------------------------------------------------
+
+
 @router.post(
     "/register",
     response_model=TokenResponse,
@@ -83,6 +88,11 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     )
 
 
+# ---------------------------------------------------------------------------
+# JWT REFRESH
+# ---------------------------------------------------------------------------
+
+
 @router.post(
     "/refresh",
     response_model=TokenResponse,
@@ -116,6 +126,11 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenRespons
     )
 
 
+# ---------------------------------------------------------------------------
+# CURRENT USER
+# ---------------------------------------------------------------------------
+
+
 @router.get(
     "/me",
     response_model=UserOut,
@@ -124,6 +139,11 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenRespons
 )
 def me(current_user: User = Depends(get_current_user)) -> UserOut:
     return UserOut.model_validate(current_user)
+
+
+# ---------------------------------------------------------------------------
+# OAUTH 42 — LINK INTRA
+# ---------------------------------------------------------------------------
 
 
 @router.get(
