@@ -8,9 +8,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "postgresql+psycopg://betterintra:betterintra@localhost:5432/betterintra"
     cors_origins: str = "http://localhost:3000"
+    frontend_url: str = "http://localhost:3000"
 
     # Auth / JWT — values required before enabling auth routes
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "dev-only-change-me-to-a-long-random-secret"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
     jwt_refresh_token_expire_days: int = 30
