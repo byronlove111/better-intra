@@ -58,12 +58,12 @@ def list_events(
     summary="Create a BetterIntra event",
     description="Create an event hosted on BetterIntra (JWT). Appears in GET /events with source=betterintra.",
 )
-def create_event(
+async def create_event(
     body: EventCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EventOut:
-    return event_service.create_event(db, user=current_user, data=body)
+    return await event_service.create_event(db, user=current_user, data=body)
 
 
 @router.get(

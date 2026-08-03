@@ -21,7 +21,7 @@ def _to_out(row: Event) -> EventOut:
     )
 
 
-def create_event(db: Session, *, user: User, data: EventCreate) -> EventOut:
+async def create_event(db: Session, *, user: User, data: EventCreate) -> EventOut:
     row = event_repository.create(
         db,
         creator_id=user.id,
@@ -31,7 +31,23 @@ def create_event(db: Session, *, user: User, data: EventCreate) -> EventOut:
         begin_at=data.begin_at,
         end_at=data.end_at,
     )
-    return _to_out(row)
+    out = _to_out(row)
+
+    from app.notifications.notification_schemas import NotificationType
+    from app.notifications.notification_service import notify_many
+    from app.users import user_repository
+
+    recipient_ids = user_repository.list_all_ids(db, exclude_user_id=user.id)
+    if recipient_ids:
+        who = user.login or user.email
+        await notify_many(
+            db,
+            user_ids=recipient_ids,
+            type=NotificationType.event,
+            body=f"New event: {out.title} (by {who})",
+            url=f"/events/{out.id}",
+        )
+    return out
 
 
 def list_events(db: Session, *, limit: int = 100, offset: int = 0) -> list[EventOut]:

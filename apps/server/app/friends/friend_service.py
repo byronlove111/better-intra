@@ -55,7 +55,7 @@ def resolve_intra_person(db: Session, *, viewer: User, login: str) -> IntraPerso
     )
 
 
-def follow_user(db: Session, *, follower: User, login: str) -> FriendOut:
+async def follow_user(db: Session, *, follower: User, login: str) -> FriendOut:
     person = resolve_intra_person(db, viewer=follower, login=login)
     if follower.forty_two_id is not None and person.forty_two_id == follower.forty_two_id:
         raise HTTPException(
@@ -88,6 +88,17 @@ def follow_user(db: Session, *, follower: User, login: str) -> FriendOut:
         ) from exc
 
     bi_user = user_repository.get_by_id(db, person.betterintra_user_id) if person.betterintra_user_id else None
+    if bi_user is not None and follower.login:
+        from app.notifications.notification_schemas import NotificationType
+        from app.notifications.notification_service import notify
+
+        await notify(
+            db,
+            user_id=bi_user.id,
+            type=NotificationType.follow,
+            body=f"{follower.login} started following you",
+            url=f"/users/{follower.login}",
+        )
     return _friend_from_person(person, friendship.created_at, bi_user)
 
 

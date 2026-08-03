@@ -116,12 +116,12 @@ def user_stats(
         "Response includes `is_betterintra_linked` + bio when they have a BI account."
     ),
 )
-def follow_user(
+async def follow_user(
     login: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_intra_linked),
 ) -> FriendOut:
-    return friend_service.follow_user(db, follower=current_user, login=login)
+    return await friend_service.follow_user(db, follower=current_user, login=login)
 
 
 @router.delete(

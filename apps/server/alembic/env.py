@@ -15,6 +15,7 @@ from app.chat.message_model import Message  # noqa: F401
 from app.events.event_model import Event  # noqa: F401
 from app.friends.friend_model import Friendship  # noqa: F401
 from app.intra.intra_person_model import IntraPerson  # noqa: F401
+from app.notifications.notification_model import Notification  # noqa: F401
 from app.users.user_model import User  # noqa: F401
 
 config = context.config
