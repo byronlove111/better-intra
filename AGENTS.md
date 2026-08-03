@@ -69,17 +69,15 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 1. Backend owns secrets, 42 proxy, DB access. Front never talks to api.intra.42.fr.
 2. Front stack = Swan. Docker/HTTPS = Ayoub.
-3. SQLAlchemy + Alembic installed; no models yet.
-4. API exposes `/health` + `/health/db` only for now.
+3. Intra-first identity (`intra_people`) + follows; unified profiles; BetterIntra **events** + per-user **API keys**.
+4. Public API Major = `/api/v1/events` with `X-API-Key` (+ rate limit); front JWT `/events` = unified feed + BI CRUD.
+5. Event list merge = Intra + BetterIntra via pluggable source adapters (`app/agenda`).
 
 ## Next steps
 
-1. Push remaining local proxy 42 work (if not merged)
-2. Friends (CRUD)
-3. Profile bio (JWT) + **public API profiles** (API key, rate limit, OpenAPI) — Major +2
-4. Chat DM + WebSockets (online, messages, notifs)
-5. Notifications persistées
-6. Analytics logtime + export PDF/CSV
-7. Peer recommendations
-8. HTTPS + Compose (Ayoub)
-9. Privacy Policy + Terms of Service + i18n (Swan)
+1. Chat DM + WebSockets (online, messages, notifs)
+2. Notifications persistées
+3. Analytics logtime + export PDF/CSV
+4. Peer recommendations
+5. HTTPS + Compose (Ayoub)
+6. Privacy Policy + Terms of Service + i18n (Swan)

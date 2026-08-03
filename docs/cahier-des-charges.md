@@ -42,7 +42,8 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 ### 3.2 Features BetterIntra (notre BDD / notre logique)
 
 - **Profil unifié Intra-first** — `GET /users/me` + `GET /users/{login}` (tout login 42). Flag `is_betterintra_linked` pour le front ; bio/id seulement si compte BI. Bio éditable seulement si Intra lié
-- **API publique des profils** — ≥ 5 endpoints CRUD, **clé API**, **rate limit**, documentation OpenAPI (Major Web public API — voir §6)
+- **Events BetterIntra** — CRUD JWT sur `/events` ; `GET /events` = feed unifié Intra + BetterIntra (DTO `source` / id composite)
+- **API publique events + clés API** — ≥ 5 endpoints CRUD `/api/v1/events`, **clé API** personnelle (`X-API-Key`), **rate limit**, OpenAPI (Major Web public API — voir §6)
 - **Amis (follows Intra-first)** — follow n’importe quel login 42 ; `intra_people` + `is_betterintra_linked` (+ bio si BI) ; following/followers + compteurs ; JWT + Intra lié côté follower
 - **Statut online** — présence en temps réel des amis connectés à BetterIntra
 - **Chat DM** — messages privés 1-to-1
@@ -72,7 +73,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 | Dashboard | Synthèse (niveau, points, prochaines évals/events, notifs) |
 | Profil | Soi / autres · data 42 si lié · bio BetterIntra · amis |
 | Projets | Liste, statut, notes |
-| Agenda | Events + recherche avancée |
+| Agenda | `GET /events` unifié (Intra + BI) · recherche/filtres · CRUD BI |
 | Évaluations | Historique (correcteur / corrigé) |
 | Logtime | Calendrier + analytics + export |
 | Amis | Liste, ajout/retrait, online |
@@ -93,7 +94,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 | 3 | Profil, avatar, amis, online | User Mgmt Major | 2 |
 | 4 | Chat + profil + amis | Web interaction Major | 2 |
 | 5 | WebSockets | Web realtime Major | 2 |
-| 6 | API publique profils (bio…) | Web public API Major | 2 |
+| 6 | API publique events + clés API | Web public API Major | 2 |
 | 7 | ORM | Web Minor | 1 |
 | 8 | Notifications | Web Minor | 1 |
 | 9 | Recherche events avancée | Web Minor | 1 |
@@ -116,22 +117,26 @@ Owners : Kylian (scoring) · Swan (UI) · Malik (proxy/cache 42).
 
 ---
 
-## 6. API publique (profils)
+## 6. API publique (events)
 
-Ressource : profils BetterIntra (bio et champs étendus stockés **chez nous**, pas l’API 42).
+Ressource : **events BetterIntra** stockés chez nous (pas d’écriture sur l’API 42).
+
+Deux modes d’accès :
+1. **JWT (front)** — `GET /events` = feed unifié ; `POST/PATCH/DELETE /events` pour les events BetterIntra (sans clé API).
+2. **Clé API (automation / Major)** — utilisateur génère une clé via `POST /api-keys` (JWT), puis appelle `/api/v1/events` avec `X-API-Key`.
 
 Exigences du Major :
-- **Clé API** (header type `X-API-Key`)
-- **Rate limit**
-- **Docs OpenAPI**
-- **≥ 5 endpoints**, ex. :
-  - `GET /api/v1/profiles`
-  - `POST /api/v1/profiles`
-  - `GET /api/v1/profiles/:id`
-  - `PUT /api/v1/profiles/:id`
-  - `DELETE /api/v1/profiles/:id`
+- **Clé API** (header `X-API-Key`)
+- **Rate limit** (par clé)
+- **Docs OpenAPI** (`/docs`)
+- **≥ 5 endpoints** :
+  - `GET /api/v1/events`
+  - `POST /api/v1/events`
+  - `GET /api/v1/events/:id`
+  - `PUT /api/v1/events/:id`
+  - `DELETE /api/v1/events/:id`
 
-Le front app utilise plutôt le CRUD JWT (`/me/profile` ou équivalent). L’API `/api/v1/profiles` sert les clients externes / la démo du Major.
+Gestion des clés (JWT) : `POST/GET /api-keys`, `DELETE /api-keys/:id` (la raw key n’est renvoyée qu’à la création).
 
 ---
 
@@ -149,7 +154,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 ## 9. Modèle BDD (min)
 
-`User` (email/hash + lien 42 optionnel + **bio** / champs profil) · `Friendship` · `Conversation`/`Message` · `Notification` · `ApiKey` (ou secret app pour l’API publique) · cache reco si besoin
+`User` (email/hash + lien 42 optionnel + **bio**) · `IntraPerson` · `Friendship` · `Event` · `ApiKey` · `Conversation`/`Message` · `Notification` · cache reco si besoin
 
 ---
 
@@ -157,7 +162,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 Docker 1 commande · HTTPS · Chrome sans warnings · `.env` + example · Privacy + Terms · README EN (rôles PO/PM/TL + modules) · commits multi-auteurs · validation inputs FE+BE
 
-**MVP ok si :** auth dual · data 42 si lié · profil bio + API publique profils · social+WS · analytics+export · i18n 3 langues · reco démo · compose up · README custom module.
+**MVP ok si :** auth dual · data 42 si lié · profil bio · events BI + API publique events (clés) · social+WS · analytics+export · i18n 3 langues · reco démo · compose up · README custom module.
 
 ---
 
@@ -165,7 +170,7 @@ Docker 1 commande · HTTPS · Chrome sans warnings · `.env` + example · Privac
 
 | Rôle | Focus |
 |---|---|
-| Malik | Backend / OAuth / proxy 42 / profils + API publique / social API / WS |
+| Malik | Backend / OAuth / proxy 42 / profils / events + API publique / social API / WS |
 | Swan | Frontend / pages / i18n / UI reco |
 | Ayoub | DevOps / Compose / HTTPS / envs / seed démo |
 | Kylian | Scoring recommandations |

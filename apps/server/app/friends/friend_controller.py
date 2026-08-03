@@ -15,12 +15,6 @@ router = APIRouter(prefix="/friends", tags=["friends"])
 
 
 @router.get(
-    "",
-    response_model=FollowListOut,
-    summary="People I follow",
-    description="Alias of `/friends/following`. Requires JWT + linked Intra.",
-)
-@router.get(
     "/following",
     response_model=FollowListOut,
     summary="People I follow",
