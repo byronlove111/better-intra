@@ -72,12 +72,12 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 3. Intra-first identity (`intra_people`) + follows; unified profiles; BetterIntra **events** + per-user **API keys**.
 4. Public API Major = `/api/v1/events` with `X-API-Key` (+ rate limit); front JWT `/events` = unified feed + BI CRUD.
 5. Event list merge = Intra + BetterIntra via pluggable source adapters (`app/agenda`).
+6. Chat DM: 1 thread/pair, Intra-linked only, last-read + blocks; WS `/ws?token=` for message/read/presence (no typing).
 
 ## Next steps
 
-1. Chat DM + WebSockets (online, messages, notifs)
-2. Notifications persistées
-3. Analytics logtime + export PDF/CSV
-4. Peer recommendations
-5. HTTPS + Compose (Ayoub)
-6. Privacy Policy + Terms of Service + i18n (Swan)
+1. Notifications persistées
+2. Analytics logtime + export PDF/CSV
+3. Peer recommendations
+4. HTTPS + Compose (Ayoub)
+5. Privacy Policy + Terms of Service + i18n (Swan)
