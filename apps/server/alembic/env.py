@@ -7,6 +7,8 @@ from app.config import settings
 from app.db import Base
 
 # Import feature models so they register on Base.metadata for autogenerate.
+from app.api_keys.api_key_model import ApiKey  # noqa: F401
+from app.events.event_model import Event  # noqa: F401
 from app.friends.friend_model import Friendship  # noqa: F401
 from app.intra.intra_person_model import IntraPerson  # noqa: F401
 from app.users.user_model import User  # noqa: F401

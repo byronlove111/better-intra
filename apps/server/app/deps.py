@@ -3,10 +3,12 @@
 from collections.abc import Generator
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.api_keys import api_key_service
+from app.api_keys.rate_limit import check_rate_limit
 from app.auth.auth_service import decode_access_token
 from app.db import SessionLocal
 from app.users import user_repository
@@ -55,3 +57,19 @@ def require_intra_linked(current_user: User = Depends(get_current_user)) -> User
             detail="Link your Intra account first",
         )
     return current_user
+
+
+def get_current_user_from_api_key(
+    db: Session = Depends(get_db),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> User:
+    """Authenticate public API callers via personal API key + enforce rate limit."""
+    if not x_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing X-API-Key header",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+    user, api_key = api_key_service.resolve_user_from_api_key(db, raw_key=x_api_key)
+    check_rate_limit(api_key.id)
+    return user
