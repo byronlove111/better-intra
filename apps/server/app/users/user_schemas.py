@@ -24,20 +24,26 @@ class UserOut(BaseModel):
 
 
 class UserProfileOut(BaseModel):
-    """Unified BetterIntra + Intra profile (single front call)."""
+    """Unified profile: Intra always (when viewer linked) + optional BetterIntra overlay."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    email: EmailStr | None = None
     login: str | None = None
     display_name: str | None = None
     avatar_url: str | None = None
-    bio: str | None = None
-    is_intra_linked: bool
+    forty_two_id: int | None = None
     intra: IntraProfileOut | None = None
-    created_at: datetime
-    updated_at: datetime
+
+    # Front permission flag: show BI-only UI when true
+    is_betterintra_linked: bool = False
+    # Present when is_betterintra_linked
+    id: int | None = None
+    email: EmailStr | None = None
+    bio: str | None = None
+    # For /users/me CTA: has the current account linked Intra?
+    is_intra_linked: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class UpdateProfileRequest(BaseModel):

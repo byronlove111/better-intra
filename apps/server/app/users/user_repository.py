@@ -52,6 +52,17 @@ def link_forty_two(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    from app.intra import intra_person_repository
+
+    intra_person_repository.attach_betterintra_user(
+        db,
+        forty_two_id=forty_two_id,
+        login=login,
+        display_name=display_name,
+        avatar_url=avatar_url,
+        user_id=user.id,
+    )
     return user
 
 
