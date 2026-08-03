@@ -49,7 +49,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 - **Statut online** — présence globale via WebSocket
 - **Notifications** — centre de notifs (amis, messages…) persistées + push live *(plus tard)*
 - **WebSockets** — online, nouveaux messages, read receipts (pas de typing)
-- **Analytics logtime** — calendrier / graphiques, filtres de dates, **export** (PDF/CSV inclus dans ce module)
+- **Analytics logtime** — `GET /analytics/logtime` (totaux, jours actifs, par jour/semaine/weekday) + **export PDF/CSV**
 - **i18n** — au moins 3 langues complètes, language switcher, textes user-facing traduisibles
 - **Recommandations** — suggestions de personnes à contacter (même projet / avancée proche + overlap d’horaires à l’école) ; scoring déterministe ; module of choice (voir §5.1)
 
