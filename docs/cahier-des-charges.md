@@ -41,9 +41,9 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 
 ### 3.2 Features BetterIntra (notre BDD / notre logique)
 
-- **Profil unifié** — `GET /users/me` et `GET /users/{login}` renvoient BetterIntra + nested `intra` (42) en **un seul call**. **Bio** uniquement si Intra lié (sinon PATCH → 403, `bio`/`intra` null)
+- **Profil unifié Intra-first** — `GET /users/me` + `GET /users/{login}` (tout login 42). Flag `is_betterintra_linked` pour le front ; bio/id seulement si compte BI. Bio éditable seulement si Intra lié
 - **API publique des profils** — ≥ 5 endpoints CRUD, **clé API**, **rate limit**, documentation OpenAPI (Major Web public API — voir §6)
-- **Amis** — ajouter / retirer, liste d’amis
+- **Amis (follows Intra-first)** — follow n’importe quel login 42 ; `intra_people` + `is_betterintra_linked` (+ bio si BI) ; following/followers + compteurs ; JWT + Intra lié côté follower
 - **Statut online** — présence en temps réel des amis connectés à BetterIntra
 - **Chat DM** — messages privés 1-to-1
 - **Notifications** — centre de notifs (amis, messages…) persistées + push live
