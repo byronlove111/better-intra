@@ -47,7 +47,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 - **Amis (follows Intra-first)** — follow n’importe quel login 42 ; `intra_people` + `is_betterintra_linked` (+ bio si BI) ; following/followers + compteurs ; JWT + Intra lié côté follower
 - **Chat DM** — messages privés 1-to-1 entre comptes BetterIntra Intra-liés ; thread auto au 1er message ; last-read ; block ; WS live
 - **Statut online** — présence globale via WebSocket
-- **Notifications** — centre de notifs (amis, messages…) persistées + push live *(plus tard)*
+- **Notifications** — inbox simple (`type`, `body`, `url`, `created_at`) ; purge auto 7j ; push WS ; pas de mute/read
 - **WebSockets** — online, nouveaux messages, read receipts (pas de typing)
 - **Analytics logtime** — `GET /analytics/logtime` (totaux, jours actifs, par jour/semaine/weekday) + **export PDF/CSV**
 - **i18n** — au moins 3 langues complètes, language switcher, textes user-facing traduisibles

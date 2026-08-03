@@ -74,10 +74,10 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 5. Event list merge = Intra + BetterIntra via pluggable source adapters (`app/agenda`).
 6. Chat DM: 1 thread/pair, Intra-linked only, last-read + blocks; WS `/ws?token=` for message/read/presence (no typing).
 7. Logtime analytics: `GET /analytics/logtime` + CSV/PDF export.
+8. Notifications: simple inbox (type/body/url/date), 7-day TTL, WS `notification.created`.
 
 ## Next steps
 
-1. Notifications persistées
-2. Peer recommendations
-3. HTTPS + Compose (Ayoub)
-4. Privacy Policy + Terms of Service + i18n (Swan)
+1. Peer recommendations
+2. HTTPS + Compose (Ayoub)
+3. Privacy Policy + Terms of Service + i18n (Swan)

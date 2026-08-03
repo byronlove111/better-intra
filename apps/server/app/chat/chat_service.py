@@ -128,6 +128,18 @@ async def send_message(db: Session, *, me: User, data: SendMessageRequest) -> Me
         [me.id, peer.id],
         {"type": "message.created", "payload": out.model_dump(mode="json")},
     )
+
+    preview = body if len(body) <= 120 else f"{body[:117]}..."
+    from app.notifications.notification_schemas import NotificationType
+    from app.notifications.notification_service import notify
+
+    await notify(
+        db,
+        user_id=peer.id,
+        type=NotificationType.dm,
+        body=f"{me.login}: {preview}",
+        url=f"/conversations/{conv.id}",
+    )
     return out
 
 

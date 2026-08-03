@@ -9,6 +9,7 @@ from app.events.public_event_controller import router as public_events_router
 from app.friends.friend_controller import router as friends_router
 from app.health.controller import router as health_router
 from app.intra.intra_controller import router as intra_router
+from app.notifications.notification_controller import router as notifications_router
 from app.realtime.ws_controller import router as ws_router
 from app.users.user_controller import router as users_router
 
@@ -24,3 +25,4 @@ api_router.include_router(public_events_router)
 api_router.include_router(chat_router)
 api_router.include_router(ws_router)
 api_router.include_router(analytics_router)
+api_router.include_router(notifications_router)
