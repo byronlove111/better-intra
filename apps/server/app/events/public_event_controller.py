@@ -30,12 +30,12 @@ def list_events(
     status_code=status.HTTP_201_CREATED,
     summary="[Public API] Create event",
 )
-def create_event(
+async def create_event(
     body: EventCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_api_key),
 ) -> EventOut:
-    return event_service.create_event(db, user=current_user, data=body)
+    return await event_service.create_event(db, user=current_user, data=body)
 
 
 @router.get(

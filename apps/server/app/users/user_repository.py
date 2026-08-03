@@ -89,3 +89,10 @@ def update_bio(db: Session, user: User, *, bio: str) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def list_all_ids(db: Session, *, exclude_user_id: int | None = None) -> list[int]:
+    stmt = select(User.id)
+    if exclude_user_id is not None:
+        stmt = stmt.where(User.id != exclude_user_id)
+    return list(db.scalars(stmt).all())

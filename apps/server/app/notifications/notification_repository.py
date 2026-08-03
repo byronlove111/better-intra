@@ -31,6 +31,25 @@ def create(
     return row
 
 
+def create_many(
+    db: Session,
+    *,
+    user_ids: list[int],
+    type: str,
+    body: str,
+    url: str,
+) -> list[Notification]:
+    if not user_ids:
+        return []
+    purge_expired(db)
+    rows = [Notification(user_id=uid, type=type, body=body, url=url) for uid in user_ids]
+    db.add_all(rows)
+    db.commit()
+    for row in rows:
+        db.refresh(row)
+    return rows
+
+
 def list_for_user(db: Session, *, user_id: int, limit: int = 50) -> list[Notification]:
     purge_expired(db)
     cutoff = datetime.now(UTC) - timedelta(days=TTL_DAYS)

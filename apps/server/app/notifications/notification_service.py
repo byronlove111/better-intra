@@ -41,6 +41,34 @@ async def notify(
     return out
 
 
+async def notify_many(
+    db: Session,
+    *,
+    user_ids: list[int],
+    type: NotificationType | str,
+    body: str,
+    url: str,
+) -> list[NotificationOut]:
+    """Fan-out the same notification to many users (e.g. new event)."""
+    ntype = NotificationType(type) if not isinstance(type, NotificationType) else type
+    rows = notification_repository.create_many(
+        db,
+        user_ids=user_ids,
+        type=ntype.value,
+        body=body.strip(),
+        url=url.strip(),
+    )
+    outs: list[NotificationOut] = []
+    for row in rows:
+        out = _to_out(row)
+        outs.append(out)
+        await ws_manager.broadcast_to_users(
+            [row.user_id],
+            {"type": "notification.created", "payload": out.model_dump(mode="json")},
+        )
+    return outs
+
+
 def list_notifications(db: Session, *, user_id: int, limit: int = 50) -> NotificationListOut:
     rows = notification_repository.list_for_user(db, user_id=user_id, limit=limit)
     return NotificationListOut(items=[_to_out(r) for r in rows])
