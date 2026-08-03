@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.analytics.analytics_controller import router as analytics_router
 from app.api_keys.api_key_controller import router as api_keys_router
 from app.auth.auth_controller import router as auth_router
 from app.chat.chat_controller import router as chat_router
@@ -22,3 +23,4 @@ api_router.include_router(events_router)
 api_router.include_router(public_events_router)
 api_router.include_router(chat_router)
 api_router.include_router(ws_router)
+api_router.include_router(analytics_router)
