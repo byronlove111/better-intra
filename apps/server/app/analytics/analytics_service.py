@@ -196,65 +196,215 @@ def analytics_to_csv(data: LogtimeAnalyticsOut) -> str:
     return buf.getvalue()
 
 
+def _fmt_hours(seconds: int) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours and minutes:
+        return f"{hours}h {minutes:02d}m"
+    if hours:
+        return f"{hours}h"
+    return f"{minutes}m"
+
+
 def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    """Polished one-pager-style report (multi-page if many days)."""
+
+    # Palette (RGB) — slate + teal, no purple cliché
+    ink = (24, 32, 40)
+    muted = (100, 112, 124)
+    line = (220, 226, 232)
+    band = (15, 76, 92)  # deep teal
+    accent = (20, 160, 140)
+    card_bg = (245, 248, 250)
+    zebra = (250, 252, 253)
+
+    pdf = FPDF(unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 18)
-    pdf.cell(0, 10, "BetterIntra - Logtime report", new_x="LMARGIN", new_y="NEXT")
+    page_w = pdf.w - pdf.l_margin - pdf.r_margin
+
+    # --- Header band ---
+    pdf.set_fill_color(*band)
+    pdf.rect(0, 0, pdf.w, 36, style="F")
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(pdf.l_margin, 10)
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.cell(page_w, 8, "BetterIntra", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, f"Login: {data.login}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(
-        0,
-        8,
-        f"Period: {data.begin_at.date().isoformat()} -> {data.end_at.date().isoformat()}",
-        new_x="LMARGIN",
-        new_y="NEXT",
-    )
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Summary", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 7, f"Total: {data.total_hours} h ({data.total_seconds} s)", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Active days: {data.active_days}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(
-        0,
-        7,
-        f"Avg / active day: {data.average_hours_per_active_day} h",
-        new_x="LMARGIN",
-        new_y="NEXT",
-    )
-    pdf.cell(0, 7, f"Sessions: {data.sessions_count}", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(pdf.l_margin)
+    pdf.cell(page_w, 6, "Logtime analytics report", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(42)
+    pdf.set_text_color(*ink)
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(page_w * 0.5, 7, f"@{data.login}", new_x="RIGHT")
+    pdf.set_font("Helvetica", size=10)
+    pdf.set_text_color(*muted)
+    period = f"{data.begin_at.date().isoformat()}  to  {data.end_at.date().isoformat()}"
+    pdf.cell(page_w * 0.5, 7, period, align="R", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "By weekday", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", size=10)
-    for row in data.by_weekday:
-        pdf.cell(
-            0,
-            6,
-            f"{row.weekday_name}: {row.duration_hours} h",
-            new_x="LMARGIN",
-            new_y="NEXT",
-        )
+    # --- KPI cards ---
+    cards = [
+        ("Total time", _fmt_hours(data.total_seconds), f"{data.total_hours} h"),
+        ("Active days", str(data.active_days), "days with presence"),
+        ("Daily average", _fmt_hours(data.average_seconds_per_active_day), "per active day"),
+        ("Sessions", str(data.sessions_count), "location check-ins"),
+    ]
+    gap = 3.0
+    card_w = (page_w - gap * 3) / 4
+    card_h = 28.0
+    y0 = pdf.get_y()
+    for i, (label, value, hint) in enumerate(cards):
+        x = pdf.l_margin + i * (card_w + gap)
+        pdf.set_fill_color(*card_bg)
+        pdf.set_draw_color(*line)
+        pdf.rect(x, y0, card_w, card_h, style="FD")
+        # accent strip
+        pdf.set_fill_color(*accent)
+        pdf.rect(x, y0, 1.2, card_h, style="F")
+        pdf.set_xy(x + 4, y0 + 4)
+        pdf.set_font("Helvetica", size=8)
+        pdf.set_text_color(*muted)
+        pdf.cell(card_w - 6, 4, label.upper())
+        pdf.set_xy(x + 4, y0 + 10)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_text_color(*ink)
+        pdf.cell(card_w - 6, 7, value)
+        pdf.set_xy(x + 4, y0 + 19)
+        pdf.set_font("Helvetica", size=7)
+        pdf.set_text_color(*muted)
+        pdf.cell(card_w - 6, 4, hint)
+    pdf.set_y(y0 + card_h + 10)
 
-    pdf.ln(4)
+    # --- Weekday bars ---
+    pdf.set_text_color(*ink)
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Daily breakdown", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(50, 7, "Date", border=1)
-    pdf.cell(40, 7, "Hours", border=1)
-    pdf.cell(50, 7, "Seconds", border=1, new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", size=10)
-    for day in data.days:
-        pdf.cell(50, 6, day.date, border=1)
-        pdf.cell(40, 6, str(day.duration_hours), border=1)
-        pdf.cell(50, 6, str(day.duration_seconds), border=1, new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(page_w, 7, "Time by weekday", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(1)
+
+    max_weekday = max((w.duration_seconds for w in data.by_weekday), default=0) or 1
+    bar_max_w = page_w - 42
+    short_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    for i, row in enumerate(data.by_weekday):
+        y = pdf.get_y()
+        if y > pdf.h - 30:
+            pdf.add_page()
+            y = pdf.get_y()
+        pdf.set_font("Helvetica", size=9)
+        pdf.set_text_color(*ink)
+        pdf.set_xy(pdf.l_margin, y)
+        pdf.cell(18, 6, short_names[i])
+        bar_w = bar_max_w * (row.duration_seconds / max_weekday)
+        pdf.set_fill_color(*card_bg)
+        pdf.rect(pdf.l_margin + 20, y + 1.2, bar_max_w, 3.6, style="F")
+        if bar_w > 0:
+            pdf.set_fill_color(*accent)
+            pdf.rect(pdf.l_margin + 20, y + 1.2, max(bar_w, 0.8), 3.6, style="F")
+        pdf.set_xy(pdf.l_margin + 20 + bar_max_w + 2, y)
+        pdf.set_text_color(*muted)
+        pdf.cell(20, 6, _fmt_hours(row.duration_seconds), align="R")
+        pdf.set_y(y + 7)
+
+    pdf.ln(6)
+
+    # --- Weekly summary (compact) ---
+    if data.by_week:
+        pdf.set_text_color(*ink)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(page_w, 7, "Weekly totals", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        # table header
+        pdf.set_fill_color(*band)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(page_w * 0.55, 7, "  Week starting", border=0, fill=True)
+        pdf.cell(page_w * 0.45, 7, "Time  ", border=0, fill=True, align="R", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", size=9)
+        for idx, week in enumerate(data.by_week):
+            if pdf.get_y() > pdf.h - 25:
+                pdf.add_page()
+            bg = zebra if idx % 2 else (255, 255, 255)
+            pdf.set_fill_color(*bg)
+            pdf.set_text_color(*ink)
+            pdf.cell(page_w * 0.55, 6.5, f"  {week.week_start}", fill=True)
+            pdf.set_text_color(*muted)
+            pdf.cell(
+                page_w * 0.45,
+                6.5,
+                f"{_fmt_hours(week.duration_seconds)}  ",
+                fill=True,
+                align="R",
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
+        pdf.ln(6)
+
+    # --- Daily table ---
+    pdf.set_text_color(*ink)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(page_w, 7, "Daily breakdown", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(1)
 
     if not data.days:
         pdf.set_font("Helvetica", size=10)
-        pdf.cell(0, 8, "No location sessions in this period.", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*muted)
+        pdf.cell(page_w, 8, "No location sessions in this period.")
+    else:
+        col_date = page_w * 0.40
+        col_hours = page_w * 0.30
+        col_bar = page_w * 0.30
+        pdf.set_fill_color(*band)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(col_date, 7, "  Date", fill=True)
+        pdf.cell(col_hours, 7, "Duration", fill=True, align="R")
+        pdf.cell(col_bar, 7, "  Intensity", fill=True, new_x="LMARGIN", new_y="NEXT")
+
+        max_day = max((d.duration_seconds for d in data.days), default=0) or 1
+        pdf.set_font("Helvetica", size=9)
+        for idx, day in enumerate(data.days):
+            if pdf.get_y() > pdf.h - 22:
+                pdf.add_page()
+                pdf.set_fill_color(*band)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(col_date, 7, "  Date", fill=True)
+                pdf.cell(col_hours, 7, "Duration", fill=True, align="R")
+                pdf.cell(col_bar, 7, "  Intensity", fill=True, new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font("Helvetica", size=9)
+
+            bg = zebra if idx % 2 else (255, 255, 255)
+            y = pdf.get_y()
+            pdf.set_fill_color(*bg)
+            pdf.rect(pdf.l_margin, y, page_w, 6.5, style="F")
+            pdf.set_text_color(*ink)
+            pdf.set_xy(pdf.l_margin, y)
+            pdf.cell(col_date, 6.5, f"  {day.date}")
+            pdf.set_text_color(*muted)
+            pdf.cell(col_hours, 6.5, _fmt_hours(day.duration_seconds), align="R")
+            # mini intensity bar
+            intensity_w = (col_bar - 8) * (day.duration_seconds / max_day)
+            bx = pdf.l_margin + col_date + col_hours + 4
+            pdf.set_fill_color(*line)
+            pdf.rect(bx, y + 2.0, col_bar - 8, 2.5, style="F")
+            if intensity_w > 0:
+                pdf.set_fill_color(*accent)
+                pdf.rect(bx, y + 2.0, max(intensity_w, 0.6), 2.5, style="F")
+            pdf.set_y(y + 6.5)
+
+    # --- Footer on each page ---
+    page_count = pdf.pages_count
+    for page_n in range(1, page_count + 1):
+        pdf.page = page_n
+        pdf.set_y(-14)
+        pdf.set_draw_color(*line)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+        pdf.set_y(-12)
+        pdf.set_font("Helvetica", size=8)
+        pdf.set_text_color(*muted)
+        pdf.cell(page_w * 0.5, 5, "Generated by BetterIntra")
+        pdf.cell(page_w * 0.5, 5, f"Page {page_n} / {page_count}", align="R")
 
     out = pdf.output()
     if isinstance(out, (bytes, bytearray)):
