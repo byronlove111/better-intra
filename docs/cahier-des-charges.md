@@ -45,10 +45,10 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 - **Events BetterIntra** — CRUD JWT sur `/events` ; `GET /events` = feed unifié Intra + BetterIntra (DTO `source` / id composite)
 - **API publique events + clés API** — ≥ 5 endpoints CRUD `/api/v1/events`, **clé API** personnelle (`X-API-Key`), **rate limit**, OpenAPI (Major Web public API — voir §6)
 - **Amis (follows Intra-first)** — follow n’importe quel login 42 ; `intra_people` + `is_betterintra_linked` (+ bio si BI) ; following/followers + compteurs ; JWT + Intra lié côté follower
-- **Statut online** — présence en temps réel des amis connectés à BetterIntra
-- **Chat DM** — messages privés 1-to-1
-- **Notifications** — centre de notifs (amis, messages…) persistées + push live
-- **WebSockets** — online, nouveaux messages, notifs
+- **Chat DM** — messages privés 1-to-1 entre comptes BetterIntra Intra-liés ; thread auto au 1er message ; last-read ; block ; WS live
+- **Statut online** — présence globale via WebSocket
+- **Notifications** — centre de notifs (amis, messages…) persistées + push live *(plus tard)*
+- **WebSockets** — online, nouveaux messages, read receipts (pas de typing)
 - **Analytics logtime** — calendrier / graphiques, filtres de dates, **export** (PDF/CSV inclus dans ce module)
 - **i18n** — au moins 3 langues complètes, language switcher, textes user-facing traduisibles
 - **Recommandations** — suggestions de personnes à contacter (même projet / avancée proche + overlap d’horaires à l’école) ; scoring déterministe ; module of choice (voir §5.1)
@@ -154,7 +154,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 ## 9. Modèle BDD (min)
 
-`User` (email/hash + lien 42 optionnel + **bio**) · `IntraPerson` · `Friendship` · `Event` · `ApiKey` · `Conversation`/`Message` · `Notification` · cache reco si besoin
+`User` · `IntraPerson` · `Friendship` · `Event` · `ApiKey` · `Conversation`/`Message`/`ConversationRead` · `UserBlock` · `Notification` · cache reco si besoin
 
 ---
 
