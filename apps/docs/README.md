@@ -8,9 +8,10 @@ Renders the markdown in [`docs/dev/`](../../docs/dev/) as a local documentation 
 cd apps/docs
 pnpm install
 pnpm start
+# or: pnpm exec docusaurus start --port 3001
 ```
 
-→ http://localhost:3000
+→ http://localhost:3000 (default)
 
 ## Build static site
 
