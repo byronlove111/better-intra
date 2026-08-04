@@ -147,10 +147,15 @@ def unblock_user(
 @router.get(
     "/presence",
     response_model=PresenceOut,
-    summary="Currently online BetterIntra users",
-    description="Users with an active WebSocket. Also pushed live via WS presence.* events.",
+    summary="Online people among your follows",
+    description=(
+        "BetterIntra users you follow who currently have an active WebSocket. "
+        "Live updates via WS presence.snapshot / presence.online / presence.offline "
+        "(same follow scope)."
+    ),
 )
 def get_presence(
-    _current_user: User = Depends(require_intra_linked),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_intra_linked),
 ) -> PresenceOut:
-    return chat_service.presence_snapshot()
+    return chat_service.presence_snapshot(db, user=current_user)

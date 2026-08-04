@@ -12,6 +12,7 @@ from app.intra.intra_service import (
     fetch_intra_user,
     get_valid_forty_two_access_token,
 )
+from app.realtime.ws_manager import ws_manager
 from app.users import user_repository
 from app.users.user_model import User
 from app.users.user_schemas import UserProfileOut
@@ -28,6 +29,7 @@ def build_my_unified_profile(db: Session, *, user: User) -> UserProfileOut:
         "bio": user.bio if user.is_intra_linked() else None,
         "is_betterintra_linked": True,
         "is_intra_linked": user.is_intra_linked(),
+        "is_online": ws_manager.is_online(user.id),
         "intra": None,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
@@ -83,6 +85,7 @@ def build_profile_by_login(db: Session, *, viewer: User, login: str) -> UserProf
         "id": bi_user.id if bi_user else None,
         "email": None,
         "bio": bi_user.bio if bi_user else None,
+        "is_online": ws_manager.is_online(bi_user.id) if bi_user else None,
         "is_intra_linked": True,
         "created_at": bi_user.created_at if bi_user else None,
         "updated_at": bi_user.updated_at if bi_user else None,

@@ -8,6 +8,7 @@ from app.friends.friend_schemas import FollowListOut, FollowStatsOut, FriendOut
 from app.intra import intra_person_repository
 from app.intra.intra_person_model import IntraPerson
 from app.intra.intra_service import fetch_intra_user, get_valid_forty_two_access_token
+from app.realtime.ws_manager import ws_manager
 from app.users import user_repository
 from app.users.user_model import User
 
@@ -23,6 +24,7 @@ def _friend_from_person(person: IntraPerson, followed_at, bi_user: User | None) 
         is_betterintra_linked=linked,
         betterintra_user_id=bi_user.id if bi_user else None,
         bio=bi_user.bio if bi_user and bi_user.is_intra_linked() else None,
+        is_online=ws_manager.is_online(bi_user.id) if bi_user else None,
     )
 
 
@@ -37,6 +39,7 @@ def _friend_from_follower_user(user: User, followed_at) -> FriendOut:
         is_betterintra_linked=True,
         betterintra_user_id=user.id,
         bio=user.bio,
+        is_online=ws_manager.is_online(user.id),
     )
 
 

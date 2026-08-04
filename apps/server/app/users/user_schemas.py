@@ -40,6 +40,8 @@ class UserProfileOut(BaseModel):
     id: int | None = None
     email: EmailStr | None = None
     bio: str | None = None
+    # Live presence when target has a BetterIntra account (WS connected)
+    is_online: bool | None = None
     # For /users/me CTA: has the current account linked Intra?
     is_intra_linked: bool = False
     created_at: datetime | None = None
