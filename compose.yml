@@ -1,9 +1,13 @@
 services:
   db:
     image: postgres:16-alpine
-    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?manquant dans .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manquant dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:?manquant dans .env}
     volumes:
       - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -26,10 +30,11 @@ services:
       - ./apps/server/app:/app/app
     command: ["--reload"]
     ports:
-      # Publié pour du debug direct (curl, Swagger) pendant le dev. Le
-      # navigateur, lui, doit toujours passer par https://localhost (proxy) —
-      # jamais par ce port en clair. Voir docs/deploiement.md.
-      - "8000:8000"
+      # Publié pour du debug direct (curl, Swagger) pendant le dev, sur la
+      # loopback uniquement. Le navigateur, lui, doit toujours passer par
+      # https://localhost:8443 (proxy). Voir docs/deploiement.md.
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -48,6 +53,7 @@ services:
     ports:
       - "8080:80"
       - "8443:443"
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
