@@ -1,9 +1,9 @@
 # Events (JWT — front)
 
-Base path: `/events`  
-Auth: JWT. Unified feed merges Intra campus events + BetterIntra events.
+Base path : `/events`  
+Auth : JWT. Le feed unifié merge les events campus Intra + les events BetterIntra.
 
-## List unified agenda
+## Lister l’agenda unifié
 
 ```bash
 curl -s "$API/events?limit=20" -H "Authorization: Bearer $TOKEN"
@@ -13,17 +13,17 @@ curl -s "$API/events?q=impro&limit=50&offset=0&sources=intra&sources=betterintra
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Query params:
+Query params :
 
 | Param | Notes |
 |---|---|
-| `sources` | Repeatable: `intra`, `betterintra` |
-| `begin_at` / `end_at` | ISO datetimes; default = upcoming (`begin_at >= now`) |
-| `q` | Title search |
-| `kind` | Intra event kind filter |
+| `sources` | Répétable : `intra`, `betterintra` |
+| `begin_at` / `end_at` | Datetimes ISO ; défaut = à venir (`begin_at >= now`) |
+| `q` | Recherche sur le titre |
+| `kind` | Filtre kind Intra |
 | `limit` / `offset` | Pagination |
 
-Response:
+Réponse :
 
 ```json
 {
@@ -54,12 +54,12 @@ Response:
 
 ```ts
 const agenda = await api<Agenda>("/events?limit=40&q=" + encodeURIComponent(q));
-// render agenda.items; if item.can_edit → show edit/delete
+// rendre agenda.items ; si item.can_edit → afficher edit/delete
 ```
 
-Without Intra linked, Intra source is skipped / empty; BI events still work.
+Sans Intra lié, la source Intra est ignorée / vide ; les events BI marchent toujours.
 
-## Create BetterIntra event
+## Créer un event BetterIntra
 
 ```bash
 curl -s -X POST "$API/events" \
@@ -74,13 +74,13 @@ curl -s -X POST "$API/events" \
   }'
 ```
 
-Returns `EventOut` with numeric `id` (BI id). Creating notifies other BI users (`type: event`).
+Retourne `EventOut` avec un `id` numérique (id BI). La création notifie les autres users BI (`type: event`).
 
-`end_at` must be after `begin_at` (422 otherwise).
+`end_at` doit être après `begin_at` (422 sinon).
 
-## Get / patch / delete (BI only)
+## Get / patch / delete (BI seulement)
 
-Paths use the **numeric** BetterIntra id (not the composite `betterintra:9`).
+Les paths utilisent l’id BetterIntra **numérique** (pas le composite `betterintra:9`).
 
 ```bash
 curl -s "$API/events/9" -H "Authorization: Bearer $TOKEN"
@@ -93,11 +93,11 @@ curl -s -X PATCH "$API/events/9" \
 curl -s -X DELETE "$API/events/9" -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"
 ```
 
-Only the creator can mutate (expect 403/404 otherwise).
+Seul le créateur peut muter (403/404 sinon).
 
-## Implementing Agenda
+## Implémenter l’Agenda
 
-1. `GET /events` with filters for the calendar/list.
-2. Create form → `POST /events`.
-3. For `source === "betterintra" && can_edit` → PATCH/DELETE with `external_id` or parse id from composite.
-4. For automation / external clients → [public-api](./public-api).
+1. `GET /events` avec filtres pour le calendrier/liste.
+2. Formulaire de création → `POST /events`.
+3. Pour `source === "betterintra" && can_edit` → PATCH/DELETE avec `external_id` ou parser l’id du composite.
+4. Pour l’automation / clients externes → [API publique](./public-api).

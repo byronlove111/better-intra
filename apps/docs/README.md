@@ -1,31 +1,31 @@
-# `apps/docs` — Docusaurus (self-hosted)
+# `apps/docs` — Docusaurus (self-hosté)
 
-Renders the markdown in [`docs/dev/`](../../docs/dev/) as a local documentation site.
+Affiche le markdown de [`docs/dev/`](../../docs/dev/) en site de documentation local.
 
-## Run
+## Lancer
 
 ```bash
 cd apps/docs
 pnpm install
 pnpm start
-# or: pnpm exec docusaurus start --port 3001
+# ou : pnpm exec docusaurus start --port 3001
 ```
 
-→ http://localhost:3000 (default)
+→ http://localhost:3000 (défaut)
 
-## Build static site
+## Build static
 
 ```bash
 pnpm build
 pnpm serve
 ```
 
-Output: `apps/docs/build/` (nginx-ready).
+Sortie : `apps/docs/build/` (prêt pour nginx).
 
-## Content workflow
+## Workflow contenu
 
-1. Edit markdown under **`docs/dev/`** (source of truth).
-2. Sidebar order: `apps/docs/sidebars.ts`.
-3. Site config / theme: `docusaurus.config.ts`, `src/css/custom.css`.
+1. Éditer le markdown dans **`docs/dev/`** (source de vérité, en français).
+2. Ordre de la sidebar : `apps/docs/sidebars.ts`.
+3. Config / thème : `docusaurus.config.ts`, `src/css/custom.css`.
 
-Do **not** put long guides in `apps/docs/docs/` — that folder is unused; content lives in the repo `docs/dev/` tree.
+Ne mets pas les guides longs dans `apps/docs/docs/` — le contenu vit dans l’arbre `docs/dev/` du repo.

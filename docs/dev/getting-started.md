@@ -1,22 +1,22 @@
-# Getting started
+# Démarrage
 
-## 1. Run the API
+## 1. Lancer l’API
 
 ```bash
-# Postgres (Homebrew alternative) — or use Compose per docs/deploiement.md
+# Postgres (Homebrew en alternatif) — ou Compose, voir docs/deploiement.md
 cd apps/server
-cp .env.example .env   # fill FORTY_TWO_* for OAuth + Intra proxy
+cp .env.example .env   # renseigner FORTY_TWO_* pour OAuth + proxy Intra
 uv sync
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-| URL | Purpose |
+| URL | Rôle |
 |---|---|
 | http://localhost:8000/docs | Swagger |
-| http://localhost:8000/health | Process up |
-| http://localhost:8000/health/db | Postgres reachable |
+| http://localhost:8000/health | Process OK |
+| http://localhost:8000/health/db | Postgres joignable |
 
-Front origin must appear in `CORS_ORIGINS` (comma-separated), e.g. `http://localhost:3000,http://localhost:5174`.
+L’origine du front doit figurer dans `CORS_ORIGINS` (séparée par des virgules), ex. `http://localhost:3000,http://localhost:5174`.
 
 ## 2. Health check
 
@@ -27,9 +27,9 @@ curl -s "$API/health"
 curl -s "$API/health/db"
 ```
 
-## 3. Create / login a BetterIntra account
+## 3. Créer / se connecter à un compte BetterIntra
 
-Email + password is **mandatory** (subject). OAuth 42 is an extra link, not a replacement.
+Email + password est **obligatoire** (sujet). OAuth 42 est un lien en plus, pas un remplacement.
 
 ```bash
 # Register
@@ -43,7 +43,7 @@ curl -s -X POST "$API/auth/login" \
   -d '{"email":"dev@example.com","password":"devpass42!"}'
 ```
 
-Response shape:
+Forme de la réponse :
 
 ```json
 {
@@ -59,7 +59,7 @@ Response shape:
 }
 ```
 
-Save tokens:
+Sauver le token :
 
 ```bash
 export TOKEN=$(curl -s -X POST "$API/auth/login" \
@@ -68,13 +68,13 @@ export TOKEN=$(curl -s -X POST "$API/auth/login" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
 ```
 
-## 4. Call a protected route
+## 4. Appeler une route protégée
 
 ```bash
 curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
 ```
 
-## 5. Front fetch helper (pattern)
+## 5. Helper fetch côté front (pattern)
 
 ```ts
 async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
@@ -88,7 +88,7 @@ async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
     },
   });
   if (res.status === 401) {
-    // try /auth/refresh then retry — see auth.md
+    // tenter /auth/refresh puis retry — voir auth
   }
   if (!res.ok) throw new Error(await res.text());
   if (res.status === 204) return undefined as T;
@@ -96,24 +96,24 @@ async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 ```
 
-## 6. When you need Intra data
+## 6. Quand tu as besoin des data Intra
 
-Many social / campus routes require **JWT + Intra linked** (`403` with `"Link your Intra account first"` otherwise).
+Beaucoup de routes sociales / campus exigent **JWT + Intra lié** (`403` avec `"Link your Intra account first"` sinon).
 
-Flow: login → `GET /auth/42` → redirect user to `authorize_url` → callback links account → `user.is_intra_linked === true`.
+Flux : login → `GET /auth/42` → rediriger l’utilisateur vers `authorize_url` → le callback lie le compte → `user.is_intra_linked === true`.
 
-Details: [auth](./auth).
+Détails : [auth](./auth).
 
 ## 7. Migrations
 
-Schema is managed with Alembic under `apps/server`. After pulling:
+Le schéma est géré avec Alembic sous `apps/server`. Après un pull :
 
 ```bash
 cd apps/server
 uv run alembic upgrade head
 ```
 
-## Next
+## Suite
 
-- [Architecture & auth matrix](./architecture)
-- [Frontend cookbook](./frontend-cookbook)
+- [Architecture & matrice d’auth](./architecture)
+- [Cookbook front](./frontend-cookbook)

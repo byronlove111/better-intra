@@ -1,16 +1,16 @@
-# Friends & presence
+# Amis & présence
 
-Base path: `/friends` · presence: `GET /presence`  
-Auth: JWT + Intra linked.
+Base path : `/friends` · présence : `GET /presence`  
+Auth : JWT + Intra lié.
 
 ## Concepts
 
-- You follow an **Intra identity** (`forty_two_id` / login), not only BI users.
-- Response cards include `is_betterintra_linked`, optional `bio` / `betterintra_user_id`, and `is_online` when BI-linked.
-- Online = that BI user has an active `/ws` connection.
-- `GET /presence` returns **only people you follow** who are online (not the whole campus).
+- Tu follow une **identité Intra** (`forty_two_id` / login), pas seulement des users BI.
+- Les cartes de réponse incluent `is_betterintra_linked`, éventuellement `bio` / `betterintra_user_id`, et `is_online` si lié BI.
+- Online = ce user BI a une connexion `/ws` active.
+- `GET /presence` renvoie **uniquement les gens que tu follow** qui sont online (pas tout le campus).
 
-## My following / followers / stats
+## Mes following / followers / stats
 
 ```bash
 curl -s "$API/friends/following" -H "Authorization: Bearer $TOKEN"
@@ -18,7 +18,7 @@ curl -s "$API/friends/followers" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/friends/stats" -H "Authorization: Bearer $TOKEN"
 ```
 
-Example `following` item:
+Exemple d’item `following` :
 
 ```json
 {
@@ -48,14 +48,14 @@ await api(`/friends/${login}`, { method: "DELETE" }); // 204
 
 | Status | |
 |---|---|
-| 201 | Followed |
-| 409 | Already following |
-| 400 | Cannot follow yourself |
-| 404 | Unknown Intra login (42 lookup failed) |
+| 201 | Follow OK |
+| 409 | Déjà en follow |
+| 400 | Impossible de se follow soi-même |
+| 404 | Login Intra inconnu (lookup 42 échoué) |
 
-Following someone with a BI account triggers a **notification** for them (`type: follow`).
+Follow quelqu’un qui a un compte BI déclenche une **notification** chez lui (`type: follow`).
 
-## Someone else’s graph
+## Graphe d’un autre login
 
 ```bash
 curl -s "$API/friends/abbouras/following" -H "Authorization: Bearer $TOKEN"
@@ -63,9 +63,9 @@ curl -s "$API/friends/abbouras/followers" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/friends/abbouras/stats" -H "Authorization: Bearer $TOKEN"
 ```
 
-`stats` includes `is_following` for the viewer (except on own stats).
+`stats` inclut `is_following` pour le viewer (sauf sur ses propres stats).
 
-## Presence (REST)
+## Présence (REST)
 
 ```bash
 curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
@@ -74,17 +74,17 @@ curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
 
 ```ts
 const { online } = await api<{ online: Peer[] }>("/presence");
-// green dots on friends list / dashboard widget
+// pastilles vertes sur la liste d’amis / widget dashboard
 ```
 
-Live updates: WebSocket `presence.snapshot` / `presence.online` / `presence.offline`  
-(scoped: snapshot = your follows; broadcasts go to **your followers**).  
-See [chat-realtime](./chat-realtime).
+Updates live : WebSocket `presence.snapshot` / `presence.online` / `presence.offline`  
+(scopé : snapshot = tes follows ; broadcasts vers **tes followers**).  
+Voir [chat & temps réel](./chat-realtime).
 
-## Implementing the Amis page
+## Implémenter la page Amis
 
 1. `GET /friends/following` + `GET /friends/followers`.
-2. Form → `POST /friends/{login}`.
+2. Formulaire → `POST /friends/{login}`.
 3. Unfollow → `DELETE`.
-4. Online strip → `GET /presence` + subscribe WS.
-5. Open profile → `/users/{login}` route.
+4. Bandeau online → `GET /presence` + subscribe WS.
+5. Ouvrir un profil → route `/users/{login}`.

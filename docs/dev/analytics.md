@@ -1,30 +1,30 @@
 # Analytics (logtime)
 
-Base path: `/analytics`  
-Auth: JWT + Intra linked.
+Base path : `/analytics`  
+Auth : JWT + Intra lié.
 
-Aggregates Intra location sessions (default range: last **30 days**).
+Agrège les sessions de location Intra (plage par défaut : **30 derniers jours**).
 
-## JSON stats
+## Stats JSON
 
 ```bash
 curl -s "$API/analytics/logtime" -H "Authorization: Bearer $TOKEN"
 
-# custom range (ISO)
+# plage custom (ISO)
 curl -s "$API/analytics/logtime?begin_at=2026-07-01T00:00:00Z&end_at=2026-08-01T00:00:00Z" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Important fields:
+Champs importants :
 
-| Field | |
+| Champ | |
 |---|---|
-| `total_hours` / `total_seconds` | Totals |
-| `active_days` | Days with presence |
-| `average_hours_per_active_day` | Average |
-| `days[]` | Per calendar day |
-| `by_weekday[]` | `weekday` 0=Mon … `weekday_name`, `duration_hours` |
-| `by_week[]` | Weekly buckets |
+| `total_hours` / `total_seconds` | Totaux |
+| `active_days` | Jours avec présence |
+| `average_hours_per_active_day` | Moyenne |
+| `days[]` | Par jour calendaire |
+| `by_weekday[]` | `weekday` 0=lun … `weekday_name`, `duration_hours` |
+| `by_week[]` | Buckets hebdo |
 
 ```ts
 const stats = await api<LogtimeAnalytics>("/analytics/logtime");
@@ -33,7 +33,7 @@ const stats = await api<LogtimeAnalytics>("/analytics/logtime");
 
 ## Export CSV / PDF
 
-Binary downloads (not JSON):
+Téléchargements binaires (pas JSON) :
 
 ```bash
 curl -s "$API/analytics/logtime/export.csv" \
@@ -58,11 +58,11 @@ async function download(path: string, filename: string) {
 await download("/analytics/logtime/export.pdf", "logtime.pdf");
 ```
 
-Same optional `begin_at` / `end_at` query params as JSON.
+Mêmes query params optionnels `begin_at` / `end_at` que le JSON.
 
-## Implementing Logtime page
+## Implémenter la page Logtime
 
-1. `GET /analytics/logtime` → KPI cards + weekday bars.
-2. Buttons CSV / PDF → blob download.
-3. Optional date range picker → pass query params.
-4. Raw sessions (if needed): `GET /me/intra/logtime`.
+1. `GET /analytics/logtime` → cartes KPI + barres par weekday.
+2. Boutons CSV / PDF → download blob.
+3. Date range optionnel → passer les query params.
+4. Sessions brutes (si besoin) : `GET /me/intra/logtime`.

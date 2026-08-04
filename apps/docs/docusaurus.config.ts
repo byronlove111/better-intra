@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'BetterIntra',
-  tagline: 'Developer documentation for the BetterIntra API',
+  tagline: 'Documentation développeur de l’API BetterIntra',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -25,8 +25,8 @@ const config: Config = {
   },
 
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: 'fr',
+    locales: ['fr'],
   },
 
   presets: [
@@ -84,8 +84,8 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            {label: 'Getting started', to: '/getting-started'},
-            {label: 'Frontend cookbook', to: '/frontend-cookbook'},
+            {label: 'Démarrage', to: '/getting-started'},
+            {label: 'Cookbook front', to: '/frontend-cookbook'},
             {label: 'Architecture', to: '/architecture'},
           ],
         },
@@ -94,7 +94,7 @@ const config: Config = {
           items: [
             {label: 'Swagger (local)', href: 'http://localhost:8000/docs'},
             {label: 'Auth', to: '/auth'},
-            {label: 'Chat & realtime', to: '/chat-realtime'},
+            {label: 'Chat & temps réel', to: '/chat-realtime'},
           ],
         },
         {
@@ -111,7 +111,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `BetterIntra · docs built with Docusaurus · ${new Date().getFullYear()}`,
+      copyright: `BetterIntra · docs Docusaurus · ${new Date().getFullYear()}`,
     },
     prism: {
       theme: prismThemes.github,

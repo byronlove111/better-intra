@@ -1,48 +1,48 @@
-# Frontend cookbook
+# Cookbook front
 
-Map CDC pages → API calls. Use this as Swan’s integration checklist.
+Correspondance pages CDC → appels API. Checklist d’intégration pour Swan.
 
-Assume `api()` sends `Authorization: Bearer <access>` and `VITE_API_URL` points at the API (or a Vite proxy).
+On suppose un `api()` qui envoie `Authorization: Bearer <access>` et un `VITE_API_URL` qui pointe vers l’API (ou un proxy Vite).
 
 ## Global
 
-| Concern | How |
+| Besoin | Comment |
 |---|---|
-| Session restore | `GET /auth/me` or `GET /users/me` on boot |
-| 401 handling | `POST /auth/refresh` then retry; else login |
-| Intra gate | If `!is_intra_linked` → CTA → `GET /auth/42` → redirect |
-| Live | One shared `WebSocket` to `/ws?token=…` for chat/presence/notifs |
+| Restaurer la session | `GET /auth/me` ou `GET /users/me` au boot |
+| Gestion 401 | `POST /auth/refresh` puis retry ; sinon login |
+| Gate Intra | Si `!is_intra_linked` → CTA → `GET /auth/42` → redirect |
+| Live | Un seul `WebSocket` partagé vers `/ws?token=…` pour chat/présence/notifs |
 
 ## Login / Signup
 
 - `POST /auth/register` / `POST /auth/login`
-- Store tokens; route to dashboard
+- Stocker les tokens ; router vers le dashboard
 
 ## Dashboard
 
-- `GET /me/intra` — level, wallet, correction points  
-- `GET /events?limit=5` — upcoming  
-- `GET /notifications?limit=5` — inbox peek  
-- Optional: `GET /presence` — friends online widget  
+- `GET /me/intra` — niveau, wallet, points de correction  
+- `GET /events?limit=5` — à venir  
+- `GET /notifications?limit=5` — aperçu inbox  
+- Optionnel : `GET /presence` — widget amis online  
 
-## Profil (self / other)
+## Profil (soi / autre)
 
-- Self: `GET /users/me`, bio `PATCH /users/me`  
-- Other: `GET /users/{login}`  
-- Follow: `POST|DELETE /friends/{login}`  
-- DM if `is_betterintra_linked`: navigate chat with `to_login`  
-- Search: `GET /intra/users?q=`  
+- Soi : `GET /users/me`, bio `PATCH /users/me`  
+- Autre : `GET /users/{login}`  
+- Follow : `POST|DELETE /friends/{login}`  
+- DM si `is_betterintra_linked` : naviguer chat avec `to_login`  
+- Search : `GET /intra/users?q=`  
 
 ## Projets
 
 - `GET /me/intra/projects`  
-- Other user: `GET /intra/users/{login}/projects`  
+- Autre user : `GET /intra/users/{login}/projects`  
 
 ## Agenda
 
-- List/filter: `GET /events?q=&sources=&begin_at=&end_at=`  
-- Create BI: `POST /events`  
-- Edit/delete BI: `PATCH|DELETE /events/{id}` when `can_edit`  
+- Liste/filtres : `GET /events?q=&sources=&begin_at=&end_at=`  
+- Créer BI : `POST /events`  
+- Éditer/supprimer BI : `PATCH|DELETE /events/{id}` si `can_edit`  
 
 ## Évaluations
 
@@ -51,13 +51,13 @@ Assume `api()` sends `Authorization: Bearer <access>` and `VITE_API_URL` points 
 ## Logtime
 
 - `GET /analytics/logtime`  
-- Export: `/analytics/logtime/export.csv` + `.pdf`  
+- Export : `/analytics/logtime/export.csv` + `.pdf`  
 
 ## Amis
 
 - `GET /friends/following`, `/followers`, `/stats`  
 - `POST|DELETE /friends/{login}`  
-- Online: `GET /presence` + WS `presence.*`  
+- Online : `GET /presence` + WS `presence.*`  
 
 ## Chat
 
@@ -65,30 +65,30 @@ Assume `api()` sends `Authorization: Bearer <access>` and `VITE_API_URL` points 
 - `GET /conversations/{id}/messages`  
 - `POST /conversations/{id}/read`  
 - `POST /messages` `{ to_login, body }`  
-- Blocks: `/blocks`  
-- WS: `message.created`, `conversation.read`  
+- Blocks : `/blocks`  
+- WS : `message.created`, `conversation.read`  
 
 ## Notifications
 
 - `GET /notifications`  
-- WS: `notification.created`  
+- WS : `notification.created`  
 
-## Settings (API keys)
+## Settings (clés API)
 
 - `GET|POST /api-keys`, `DELETE /api-keys/{id}`  
-- Document `/api/v1/events` for automation  
+- Documenter `/api/v1/events` pour l’automation  
 
-## Error UX cheat-sheet
+## Antisèche erreurs UX
 
-| HTTP | Typical meaning | UI |
+| HTTP | Sens typique | UI |
 |---|---|---|
-| 401 | Bad/missing/expired JWT | Refresh or login |
-| 403 | Intra not linked / not allowed | CTA or toast |
-| 404 | Unknown login / event | Empty state |
-| 409 | Duplicate follow / email | Inline error |
-| 422 | Validation | Show field errors from `detail` |
-| 429 | API key rate limit | Backoff |
+| 401 | JWT manquant/mauvais/expiré | Refresh ou login |
+| 403 | Intra non lié / pas autorisé | CTA ou toast |
+| 404 | Login / event inconnu | Empty state |
+| 409 | Follow / email en doublon | Erreur inline |
+| 422 | Validation | Afficher les erreurs de `detail` |
+| 429 | Rate limit clé API | Backoff |
 
-## Still missing on backend
+## Encore manquant côté backend
 
-Peer recommendations (`GET /recommendations`) — not implemented yet (module of choice). Document when shipped.
+Peer recommendations (`GET /recommendations`) — pas encore implémenté (module of choice). À documenter quand ce sera shippé.

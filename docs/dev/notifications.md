@@ -1,22 +1,22 @@
 # Notifications
 
-Base path: `/notifications`  
-Auth: JWT + Intra linked.
+Base path : `/notifications`  
+Auth : JWT + Intra lié.
 
-## Model
+## Modèle
 
-Simple inbox — **no** read/unread flags, **no** mute.
+Inbox simple — **pas** de flags lu/non-lu, **pas** de mute.
 
-| Field | |
+| Champ | |
 |---|---|
 | `type` | `dm` \| `follow` \| `event` \| `announcement` |
-| `body` | Human text |
-| `url` | Front path to open (e.g. `/chat`, `/agenda`) |
+| `body` | Texte humain |
+| `url` | Path front à ouvrir (ex. `/chat`, `/agenda`) |
 | `created_at` | Timestamp |
 
-Auto-purge after **7 days**.
+Purge auto après **7 jours**.
 
-## List
+## Lister
 
 ```bash
 curl -s "$API/notifications?limit=50" -H "Authorization: Bearer $TOKEN"
@@ -27,19 +27,19 @@ curl -s "$API/notifications?limit=50" -H "Authorization: Bearer $TOKEN"
 const { items } = await api<{ items: Notification[] }>("/notifications?limit=50");
 ```
 
-## When rows are created (server hooks)
+## Quand les lignes sont créées (hooks serveur)
 
-| Trigger | Recipient | Typical `type` |
+| Trigger | Destinataire | `type` typique |
 |---|---|---|
-| Someone DMs you | You | `dm` |
-| Someone follows you (BI account) | You | `follow` |
-| Someone creates a BI event | All other BI users | `event` |
+| Quelqu’un te DM | Toi | `dm` |
+| Quelqu’un te follow (compte BI) | Toi | `follow` |
+| Quelqu’un crée un event BI | Tous les autres users BI | `event` |
 
-Also pushed live: WS `notification.created` with the same payload shape.
+Aussi poussé en live : WS `notification.created` avec la même forme de payload.
 
-## Implementing Notifications centre
+## Implémenter le centre de notifications
 
-1. Page: `GET /notifications`.
-2. Badge: `items.length` (or count since last visit — client-side only).
-3. Click row → `navigate(notification.url)`.
-4. Keep WS subscription to prepend new items + toast.
+1. Page : `GET /notifications`.
+2. Badge : `items.length` (ou compteur depuis dernière visite — côté client seulement).
+3. Clic sur une ligne → `navigate(notification.url)`.
+4. Garder le WS pour prepend + toast.

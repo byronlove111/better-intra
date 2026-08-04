@@ -1,26 +1,26 @@
-# Users & profiles
+# Users & profils
 
-Base path: `/users`
+Base path : `/users`
 
-Unified **Intra-first** profiles: any 42 login is addressable; BetterIntra fields only when linked.
+Profils unifiés **Intra-first** : tout login 42 est adressable ; les champs BetterIntra seulement s’ils sont liés.
 
-## My unified profile
+## Mon profil unifié
 
-`GET /users/me` — JWT (Intra optional).
+`GET /users/me` — JWT (Intra optionnel).
 
 ```bash
 curl -s "$API/users/me" -H "Authorization: Bearer $TOKEN"
 ```
 
-Useful fields:
+Champs utiles :
 
-| Field | Use in UI |
+| Champ | Usage UI |
 |---|---|
-| `is_intra_linked` | Show “Lie ton Intra” CTA |
-| `is_betterintra_linked` | Always `true` on `/me` |
-| `intra` | Nested campus profile when linked (`null` otherwise) |
-| `bio` | BetterIntra bio (only meaningful when Intra linked) |
-| `is_online` | Whether *you* currently have a WS connection |
+| `is_intra_linked` | Afficher le CTA « Lie ton Intra » |
+| `is_betterintra_linked` | Toujours `true` sur `/me` |
+| `intra` | Profil campus imbriqué si lié (`null` sinon) |
+| `bio` | Bio BetterIntra (pertinente seulement si Intra lié) |
+| `is_online` | Si *toi* as une connexion WS active |
 | `login`, `avatar_url`, `display_name` | Header / avatar |
 
 ```ts
@@ -28,9 +28,9 @@ const me = await api<UserProfile>("/users/me");
 if (!me.is_intra_linked) showLinkIntraCta();
 ```
 
-## Update bio
+## Mettre à jour la bio
 
-`PATCH /users/me` — JWT + **Intra linked** (403 otherwise).
+`PATCH /users/me` — JWT + **Intra lié** (403 sinon).
 
 ```bash
 curl -s -X PATCH "$API/users/me" \
@@ -46,11 +46,11 @@ await api("/users/me", {
 });
 ```
 
-## Profile by Intra login
+## Profil par login Intra
 
-`GET /users/{login}` — JWT + Intra linked.
+`GET /users/{login}` — JWT + Intra lié.
 
-Works for **any** 42 login (fetches Intra, upserts `intra_people`).
+Marche pour **n’importe quel** login 42 (fetch Intra, upsert `intra_people`).
 
 ```bash
 curl -s "$API/users/abbouras" -H "Authorization: Bearer $TOKEN"
@@ -60,23 +60,23 @@ curl -s "$API/users/abbouras" -H "Authorization: Bearer $TOKEN"
 const profile = await api(`/users/${login}`);
 
 if (profile.is_betterintra_linked) {
-  // show bio, BI id, DM button, is_online true/false
+  // afficher bio, id BI, bouton DM, is_online true/false
 } else {
-  // Intra-only card: follow still OK, no DM (no BI account)
+  // carte Intra-only : follow OK, pas de DM (pas de compte BI)
 }
 
-// is_online === null → Intra-only (cannot be WS-online on BetterIntra)
+// is_online === null → Intra-only (ne peut pas être WS-online sur BetterIntra)
 ```
 
-## Implementing the Profil page
+## Implémenter la page Profil
 
-| UI piece | Endpoint |
+| Élément UI | Endpoint |
 |---|---|
-| Own profile | `GET /users/me` |
-| Edit bio | `PATCH /users/me` |
-| Search / open other | `GET /intra/users?q=` then navigate to `/users/{login}` or `GET /users/{login}` |
-| Follow button | `POST /friends/{login}` |
-| Message button | only if `is_betterintra_linked` → chat `POST /messages` |
-| Online badge | `profile.is_online` |
+| Son propre profil | `GET /users/me` |
+| Éditer la bio | `PATCH /users/me` |
+| Chercher / ouvrir un autre | `GET /intra/users?q=` puis naviguer vers `/users/{login}` ou `GET /users/{login}` |
+| Bouton Follow | `POST /friends/{login}` |
+| Bouton Message | seulement si `is_betterintra_linked` → chat `POST /messages` |
+| Badge online | `profile.is_online` |
 
-Also see [friends-presence](./friends-presence) and [intra-proxy](./intra-proxy).
+Voir aussi [amis & présence](./friends-presence) et [proxy Intra](./intra-proxy).

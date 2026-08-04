@@ -5,13 +5,13 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
-      label: 'Start here',
+      label: 'Commencer',
       collapsed: false,
       items: ['getting-started', 'architecture', 'frontend-cookbook'],
     },
     {
       type: 'category',
-      label: 'API guides',
+      label: 'Guides API',
       collapsed: false,
       items: [
         'auth',
