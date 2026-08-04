@@ -1,9 +1,19 @@
 services:
   db:
     image: postgres:16-alpine
-    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?manquant dans .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manquant dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:?manquant dans .env}
     volumes:
       - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
 
   backend:
     build: ./apps/server
@@ -18,14 +28,22 @@ services:
     # dans l'image — un ajout de dépendance nécessite toujours un rebuild).
     volumes:
       - ./apps/server/app:/app/app
-    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["--reload"]
     ports:
-      # Publié pour du debug direct (curl, Swagger) pendant le dev. Le
-      # navigateur, lui, doit toujours passer par https://localhost (proxy) —
-      # jamais par ce port en clair. Voir docs/deploiement.md.
-      - "8000:8000"
+      # Publié pour du debug direct (curl, Swagger) pendant le dev, sur la
+      # loopback uniquement. Le navigateur, lui, doit toujours passer par
+      # https://localhost:8443 (proxy). Voir docs/deploiement.md.
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
 
   proxy:
     image: nginx:1.27-alpine
@@ -35,8 +53,16 @@ services:
     ports:
       - "8080:80"
       - "8443:443"
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/nginx-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
   db_data:
