@@ -1,75 +1,63 @@
 # Proxy Intra
 
-Lis les data école **sans jamais** appeler `api.intra.42.fr` depuis le navigateur. Auth : JWT + Intra lié. Lecture seule.
+Lis les data école **sans** appeler `api.intra.42.fr` depuis le navigateur. Auth : JWT + Intra lié. Lecture seule.
+
+Helper : [`api()`](./getting-started#helper-api).
 
 ## Moi
 
-```bash
-curl -s "$API/me/intra" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/me/intra/projects" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/me/intra/evaluations" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/me/intra/logtime" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/me/intra/events" -H "Authorization: Bearer $TOKEN"
+```js
+const profile = await api("/me/intra");
+const projects = await api("/me/intra/projects");
+const evaluations = await api("/me/intra/evaluations");
+const logtime = await api("/me/intra/logtime");
+const campusEvents = await api("/me/intra/events");
+
+const level = profile.cursus?.[0]?.level;
 ```
 
-### Profil — `GET /me/intra`
+### Champs utiles
 
-`login`, `displayname`, `wallet`, `correction_point`, `campus[]`, `cursus[]` (`level`, `grade`, …).
-
-```ts
-const me = await api<IntraProfile>("/me/intra");
-const level = me.cursus[0]?.level;
-```
-
-### Projets / évals
-
-Pages `{ items, meta }` :
-
-- Projets : `project_name`, `status`, `final_mark`, `validated`, `marked_at`
-- Évals : `role` (`corrector` \| `corrected`), `project_name`, `corrector_login`, `begin_at`
+- Profil : `login`, `displayname`, `wallet`, `correction_point`, `campus[]`, `cursus[]`
+- Projets (`items`) : `project_name`, `status`, `final_mark`, `validated`, `marked_at`
+- Évals (`items`) : `role` (`corrector` \| `corrected`), `project_name`, `corrector_login`, `begin_at`
 
 ### Logtime & events bruts
 
-- Sessions locations : `GET /me/intra/logtime`  
-- Pour **stats + PDF/CSV** → [Analytics](./analytics)  
-- Events campus bruts : `GET /me/intra/events` — pour l’Agenda produit préfère [Events unifiés](./events)
+- Sessions : `api("/me/intra/logtime")`  
+- Stats + PDF/CSV → [Analytics](./analytics)  
+- Agenda produit → [Events unifiés](./events) plutôt que `/me/intra/events`
 
 ## Recherche users
 
-```bash
-curl -s "$API/intra/users?q=abb&page=1&page_size=20" \
-  -H "Authorization: Bearer $TOKEN"
+```js
+const page = await api(`/intra/users?q=${encodeURIComponent(q)}&page=1&page_size=20`);
+// page.items → naviguer vers api(`/users/${login}`)
 
-curl -s "$API/intra/users?q=abbouras&exact=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-```ts
-const page = await api(`/intra/users?q=${encodeURIComponent(q)}`);
-// → naviguer vers GET /users/:login pour le profil produit
+const exact = await api(`/intra/users?q=${encodeURIComponent(login)}&exact=true`);
 ```
 
 ## Autre élève
 
-```bash
-curl -s "$API/intra/users/abbouras" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/intra/users/abbouras/projects" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/intra/users/abbouras/evaluations" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/intra/users/abbouras/logtime" -H "Authorization: Bearer $TOKEN"
+```js
+const other = await api(`/intra/users/${login}`);
+const otherProjects = await api(`/intra/users/${login}/projects`);
+const otherEvals = await api(`/intra/users/${login}/evaluations`);
+const otherLogtime = await api(`/intra/users/${login}/logtime`);
 ```
 
 :::tip Profil produit
-Bio, flags BI, online → [`GET /users/{login}`](./users-profiles), pas `/intra/users/{login}`.
+Bio, flags BI, online → [`GET /users/{login}`](./users-profiles).
 :::
 
 ## Recette pages
 
 | Page | Appels |
 |---|---|
-| Dashboard KPIs | `GET /me/intra` (+ events, notifs) |
-| Projets | `GET /me/intra/projects` |
-| Évaluations | `GET /me/intra/evaluations` |
-| Search | `GET /intra/users?q=` |
+| Dashboard KPIs | `api("/me/intra")` (+ events, notifs) |
+| Projets | `api("/me/intra/projects")` |
+| Évaluations | `api("/me/intra/evaluations")` |
+| Search | `api("/intra/users?q=…")` |
 
 Gère **403** (CTA Intra) et les 502 / rate-limit 42 comme retryables.
 

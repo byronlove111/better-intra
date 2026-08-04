@@ -1,14 +1,14 @@
 # Premiers pas
 
-Obtiens un JWT et appelle ta première route protégée. Ensuite tu pourras lier Intra et brancher le reste des features.
+Obtiens un JWT et appelle ta première route protégée avec `fetch`. Ensuite tu pourras lier Intra et brancher le reste.
 
 ## Avant de commencer
 
 - Postgres accessible (`DATABASE_URL` dans `apps/server/.env`)
-- Python + UV dans `apps/server`
-- Optionnel : `FORTY_TWO_*` pour OAuth / proxy Intra
+- API lancée sur `http://localhost:8000`
+- Front avec `VITE_API_URL=http://localhost:8000` (et CORS OK)
 
-## 1. Lancer l’API
+Lancer l’API (terminal serveur) :
 
 ```bash
 cd apps/server
@@ -18,37 +18,75 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Vérifie :
-
-```bash
-curl -s http://localhost:8000/health
-# {"status":"ok","service":"BetterIntra API"}
-
-curl -s http://localhost:8000/health/db
-```
-
 | URL | Rôle |
 |---|---|
 | http://localhost:8000/docs | OpenAPI / Swagger |
 | http://localhost:8000/health | Process vivant |
 | http://localhost:8000/health/db | Postgres OK |
 
-Ajoute l’origine de ton front dans `CORS_ORIGINS` (ex. `http://localhost:3000,http://localhost:5174`).
+## Helper `api()`
 
-## 2. Créer un compte
+À coller une fois dans ton client (ex. `src/lib/api.js`) :
 
-BetterIntra exige **email + password** (exigence sujet). OAuth 42 vient après.
+```js
+const API = import.meta.env.VITE_API_URL;
 
-```bash
-curl -s -X POST "$API/auth/register" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "email": "dev@example.com",
-    "password": "devpass42!"
-  }'
+export async function api(path, { method = "GET", body, auth = true } = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (auth) {
+    const token = localStorage.getItem("access_token");
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+export function saveTokens({ access_token, refresh_token }) {
+  localStorage.setItem("access_token", access_token);
+  localStorage.setItem("refresh_token", refresh_token);
+}
 ```
 
-Réponse :
+Les exemples suivants utilisent ce helper.
+
+## 1. Health check
+
+```js
+const health = await fetch(`${API}/health`).then((r) => r.json());
+// { status: "ok", service: "BetterIntra API" }
+
+const db = await fetch(`${API}/health/db`).then((r) => r.json());
+```
+
+## 2. Créer un compte / login
+
+BetterIntra exige **email + password**. OAuth 42 vient après.
+
+```js
+// Register
+const registered = await api("/auth/register", {
+  auth: false,
+  method: "POST",
+  body: { email: "dev@example.com", password: "devpass42!" },
+});
+saveTokens(registered);
+
+// Login
+const session = await api("/auth/login", {
+  auth: false,
+  method: "POST",
+  body: { email: "dev@example.com", password: "devpass42!" },
+});
+saveTokens(session);
+```
+
+Réponse typique :
 
 ```json
 {
@@ -64,74 +102,46 @@ Réponse :
 }
 ```
 
-Login (même forme de réponse) :
+## 3. Route protégée
 
-```bash
-curl -s -X POST "$API/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "email": "dev@example.com",
-    "password": "devpass42!"
-  }'
+```js
+const me = await api("/auth/me");
+console.log(me.email, me.is_intra_linked);
 ```
 
-Export rapide du token :
+## 4. Refresh sur 401
 
-```bash
-export TOKEN=$(curl -s -X POST "$API/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"dev@example.com","password":"devpass42!"}' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-```
-
-## 3. Appeler une route protégée
-
-```bash
-curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
-```
-
-## 4. Pattern front (fetch)
-
-```ts
-async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("access_token");
-  const res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init.headers ?? {}),
-    },
-  });
-
-  if (res.status === 401) {
-    // voir Auth → refresh, puis retry
+```js
+async function apiWithRefresh(path, opts = {}) {
+  try {
+    return await api(path, opts);
+  } catch (e) {
+    if (!String(e.message).startsWith("401:")) throw e;
+    const refresh_token = localStorage.getItem("refresh_token");
+    const next = await api("/auth/refresh", {
+      auth: false,
+      method: "POST",
+      body: { refresh_token },
+    });
+    saveTokens(next);
+    return api(path, opts);
   }
-  if (!res.ok) throw new Error(await res.text());
-  if (res.status === 204) return undefined as T;
-  return res.json();
 }
 ```
 
-## 5. Débloquer les data campus
-
-Sans Intra lié, friends / chat / proxy / analytics renvoient **403**.
-
-Flux court : login → `GET /auth/42` → redirect `authorize_url` → callback API → `is_intra_linked: true`.
-
-Détails dans [Authentification](./auth).
+Détails OAuth 42 : [Authentification](./auth).
 
 ## Erreurs fréquentes
 
 | Status | Cause | Fix |
 |---|---|---|
-| 401 | Token manquant / expiré | Login ou [refresh](./auth#refresh) |
+| 401 | Token manquant / expiré | Login ou refresh |
 | 403 | Intra non lié | CTA « Lie ton Intra » |
 | 409 | Email déjà pris | Login à la place |
-| 422 | Password moins de 8 / email invalide | Corriger le body |
+| 422 | Password trop court / email invalide | Corriger le body |
 
 ## Suite
 
-- [Architecture](./architecture) — qui peut appeler quoi  
-- [Cookbook front](./frontend-cookbook) — brancher les écrans  
-- [Authentification](./auth) — OAuth 42 en détail  
+- [Architecture](./architecture)  
+- [Cookbook front](./frontend-cookbook)  
+- [Authentification](./auth)  

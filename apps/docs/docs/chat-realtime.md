@@ -1,41 +1,32 @@
 # Chat & temps réel
 
-DM 1-to-1, blocks, présence, read receipts. REST pour l’historique, WebSocket pour le live.
+DM 1-to-1, blocks, présence, read receipts. REST via `fetch`, live via `WebSocket`.
 
-Auth : JWT + Intra lié. Les deux pairs doivent être BI + Intra liés.
+Auth : JWT + Intra lié. Helper : [`api()`](./getting-started#helper-api).
 
 ## Conversations & messages
 
-```bash
-curl -s "$API/conversations" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/conversations/3" -H "Authorization: Bearer $TOKEN"
+```js
+const conversations = await api("/conversations");
+const one = await api(`/conversations/${id}`);
 
-# oldest → newest ; before_id pour remonter
-curl -s "$API/conversations/3/messages?limit=50" \
-  -H "Authorization: Bearer $TOKEN"
-curl -s "$API/conversations/3/messages?limit=50&before_id=100" \
-  -H "Authorization: Bearer $TOKEN"
+const page = await api(`/conversations/${id}/messages?limit=50`);
+const older = await api(`/conversations/${id}/messages?limit=50&before_id=${beforeId}`);
+// page.items : oldest → newest
 ```
 
-`ConversationOut` : `peer` (dont `is_online`), `last_message`, `unread_count`, curseurs de lecture.
+`peer.is_online`, `last_message`, `unread_count`, curseurs de lecture.
 
 ## Envoyer un DM
 
 Crée le thread au premier message.
 
-```bash
-curl -s -X POST "$API/messages" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"to_login":"dmpeer","body":"Hey!"}'
-```
-
-```ts
-const msg = await api<Message>("/messages", {
+```js
+const msg = await api("/messages", {
   method: "POST",
-  body: JSON.stringify({ to_login, body }),
+  body: { to_login: "dmpeer", body: "Hey!" },
 });
-// ouvrir msg.conversation_id ; WS + notif côté destinataire
+// ouvrir msg.conversation_id
 ```
 
 | Status | |
@@ -46,46 +37,39 @@ const msg = await api<Message>("/messages", {
 
 ## Marquer lu
 
-Appelle à l’ouverture du thread :
-
-```bash
-curl -s -X POST "$API/conversations/3/read" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{}'
+```js
+await api(`/conversations/${id}/read`, {
+  method: "POST",
+  body: {}, // ou { message_id: 42 }
+});
 ```
 
-Optionnel : `{ "message_id": 42 }`. Émet WS `conversation.read`.
+Émet WS `conversation.read`.
 
 ## Blocks
 
-```bash
-curl -s "$API/blocks" -H "Authorization: Bearer $TOKEN"
-curl -s -X POST "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN"
-curl -s -X DELETE "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN"
+```js
+const blocks = await api("/blocks");
+await api(`/blocks/${login}`, { method: "POST" });
+await api(`/blocks/${login}`, { method: "DELETE" });
 ```
 
 ## Présence REST
 
-```bash
-curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
+```js
+const { online } = await api("/presence");
 ```
 
-Online = follows connectés. Détails : [Amis & présence](./friends-presence).
+Détails : [Amis & présence](./friends-presence).
 
 ## WebSocket
 
-```text
-ws://localhost:8000/ws?token=<access_jwt>
-```
+```js
+const token = localStorage.getItem("access_token");
+const apiHost = new URL(import.meta.env.VITE_API_URL).host;
+const proto = location.protocol === "https:" ? "wss" : "ws";
 
-(`wss://` en prod). Codes close : `4401` auth, `4403` Intra manquant.
-
-```ts
-const token = localStorage.getItem("access_token")!;
-const ws = new WebSocket(
-  `${location.protocol === "https:" ? "wss" : "ws"}://${apiHost}/ws?token=${encodeURIComponent(token)}`,
-);
+const ws = new WebSocket(`${proto}://${apiHost}/ws?token=${encodeURIComponent(token)}`);
 
 ws.onmessage = (ev) => {
   const { type, payload } = JSON.parse(ev.data);
@@ -108,19 +92,21 @@ ws.onmessage = (ev) => {
 };
 ```
 
+Codes close : `4401` auth, `4403` Intra manquant.
+
 | `type` | Payload (essentiel) |
 |---|---|
-| `presence.snapshot` | `{ online: Peer[] }` (tes follows) |
+| `presence.snapshot` | `{ online: Peer[] }` |
 | `presence.online` / `offline` | peer + `is_online` |
 | `message.created` | message + contexte |
 | `conversation.read` | `conversation_id`, `user_id`, `last_read_message_id` |
 | `notification.created` | notif |
 
-Pas de typing (hors scope). Offline = Postgres ; le WS est additif.
+Pas de typing. Offline = Postgres ; le WS est additif.
 
 ## Recette Chat
 
-1. Connecter WS + `GET /conversations`  
+1. Connecter WS + `api("/conversations")`  
 2. Ouvrir thread → messages + `POST …/read`  
 3. Composer → `POST /messages`  
 4. Merger `message.created`  

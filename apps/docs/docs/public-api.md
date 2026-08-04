@@ -1,88 +1,101 @@
 # API publique
 
-Expose un CRUD events BetterIntra authentifié par **clé API** — module Major Web public API.
+CRUD events BetterIntra avec **clé API** (`X-API-Key`) — Major Web public API.
+
+La gestion des clés se fait en JWT ; les appels `/api/v1/events` utilisent la clé brute.
+
+Helper JWT : [`api()`](./getting-started#helper-api).
 
 ## Clés (JWT)
 
-```bash
-curl -s -X POST "$API/api-keys" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"ci-bot"}'
-```
+```js
+const created = await api("/api-keys", {
+  method: "POST",
+  body: { name: "ci-bot" },
+});
+// created.key → À COPIER MAINTENANT (une seule fois)
+// created.prefix → visible ensuite dans la liste
 
-```json
-{
-  "id": 1,
-  "name": "ci-bot",
-  "prefix": "bi_ab12",
-  "key": "bi_ab12••••••••",
-  "created_at": "…"
-}
+localStorage.setItem("api_key", created.key); // démo only — préfère un secret store
+
+const keys = await api("/api-keys");
+await api(`/api-keys/${created.id}`, { method: "DELETE" });
 ```
 
 :::danger Une seule fois
 Le champ `key` (brut) n’apparaît qu’à la création. Ensuite tu ne vois que le `prefix`.
 :::
 
-```bash
-curl -s "$API/api-keys" -H "Authorization: Bearer $TOKEN"
-curl -s -X DELETE "$API/api-keys/1" -H "Authorization: Bearer $TOKEN"
-```
-
-- Stockage : hash SHA-256  
-- Rate limit : par clé / minute (`API_KEY_RATE_LIMIT_PER_MINUTE`, défaut 60)
+- Stockage serveur : hash SHA-256  
+- Rate limit : par clé / minute (défaut 60)
 
 ## Events `/api/v1/events`
 
-Header : `X-API-Key: <clé brute>` — **pas** de JWT. Scopé au propriétaire de la clé.
+```js
+const API = import.meta.env.VITE_API_URL;
+const apiKey = localStorage.getItem("api_key"); // ou saisie utilisateur
+
+async function publicApi(path, { method = "GET", body } = {}) {
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  if (res.status === 204) return null;
+  return res.json();
+}
+```
 
 ### List / create
 
-```bash
-curl -s "$API/api/v1/events?limit=20" -H "X-API-Key: $API_KEY"
+```js
+const list = await publicApi("/api/v1/events?limit=20");
 
-curl -s -X POST "$API/api/v1/events" \
-  -H "X-API-Key: $API_KEY" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "title": "Public API event",
-    "description": "from script",
-    "location": "Lab",
-    "begin_at": "2026-08-12T10:00:00Z",
-    "end_at": "2026-08-12T11:00:00Z"
-  }'
+const event = await publicApi("/api/v1/events", {
+  method: "POST",
+  body: {
+    title: "Public API event",
+    description: "from script",
+    location: "Lab",
+    begin_at: "2026-08-12T10:00:00Z",
+    end_at: "2026-08-12T11:00:00Z",
+  },
+});
 ```
 
 ### Get / put / delete
 
-```bash
-curl -s "$API/api/v1/events/9" -H "X-API-Key: $API_KEY"
+```js
+const one = await publicApi(`/api/v1/events/${event.id}`);
 
-curl -s -X PUT "$API/api/v1/events/9" \
-  -H "X-API-Key: $API_KEY" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "title": "Updated",
-    "description": null,
-    "location": "Lab",
-    "begin_at": "2026-08-12T10:00:00Z",
-    "end_at": "2026-08-12T12:00:00Z"
-  }'
+await publicApi(`/api/v1/events/${event.id}`, {
+  method: "PUT",
+  body: {
+    title: "Updated",
+    description: null,
+    location: "Lab",
+    begin_at: "2026-08-12T10:00:00Z",
+    end_at: "2026-08-12T12:00:00Z",
+  },
+});
 
-curl -s -X DELETE "$API/api/v1/events/9" -H "X-API-Key: $API_KEY"
+await publicApi(`/api/v1/events/${event.id}`, { method: "DELETE" });
 ```
 
-Les **5** endpoints Major + OpenAPI (`/docs`) + rate limit = exigences du sujet.
+Scopé au propriétaire de la clé. Les **5** endpoints + OpenAPI + rate limit = exigences du sujet.
 
 ## Recette settings front
 
-1. Lister clés (prefix + dates)  
+1. Lister clés (`api("/api-keys")`)  
 2. Créer → modal « copie maintenant »  
 3. Révoquer → `DELETE`  
 4. Lien Swagger tag `public-api`  
 
 ## Suite
 
-- [Events JWT](./events) (feed front)  
+- [Events JWT](./events)  
 - [Architecture](./architecture)  

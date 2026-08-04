@@ -2,46 +2,31 @@
 
 Follow n’importe quelle identité Intra. Affiche qui est online **parmi tes follows**.
 
-Auth : JWT + Intra lié.
+Auth : JWT + Intra lié. Helper : [`api()`](./getting-started#helper-api).
 
 ## Concepts
 
 - Tu follow un **login 42**, pas seulement des comptes BI.
 - Carte ami : `is_betterintra_linked`, `bio` / `betterintra_user_id` si BI, `is_online` si BI.
 - Online = WebSocket actif sur BetterIntra.
-- `GET /presence` ≠ « tout le campus » : uniquement tes follows online.
+- `GET /presence` ≠ tout le campus : uniquement tes follows online.
 
 ## Listes
 
-```bash
-curl -s "$API/friends/following" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/friends/followers" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/friends/stats" -H "Authorization: Bearer $TOKEN"
-```
+```js
+const following = await api("/friends/following");
+const followers = await api("/friends/followers");
+const stats = await api("/friends/stats");
 
-Exemple d’item :
-
-```json
-{
-  "forty_two_id": 202953,
-  "login": "abbouras",
-  "display_name": "…",
-  "is_betterintra_linked": true,
-  "betterintra_user_id": 7,
-  "bio": "…",
-  "is_online": false,
-  "followed_at": "…"
-}
+// following.items[0] →
+// { login, is_betterintra_linked, is_online, bio, betterintra_user_id, … }
 ```
 
 ## Follow / unfollow
 
-```bash
-curl -s -X POST "$API/friends/kclaudan" \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -s -X DELETE "$API/friends/kclaudan" \
-  -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"
+```js
+await api(`/friends/${encodeURIComponent(login)}`, { method: "POST" }); // 201
+await api(`/friends/${encodeURIComponent(login)}`, { method: "DELETE" }); // 204 → null
 ```
 
 | Status | |
@@ -55,42 +40,28 @@ Un follow vers un compte BI crée une [notification](./notifications) `type: fol
 
 ## Graphe d’un autre login
 
-```bash
-curl -s "$API/friends/abbouras/following" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/friends/abbouras/followers" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/friends/abbouras/stats" -H "Authorization: Bearer $TOKEN"
+```js
+const theirFollowing = await api(`/friends/${login}/following`);
+const theirFollowers = await api(`/friends/${login}/followers`);
+const theirStats = await api(`/friends/${login}/stats`);
+// theirStats.is_following → est-ce que *toi* le follow ?
 ```
 
-`stats.is_following` indique si **toi** follow cette identité.
+## Présence
 
-## Présence REST
-
-```bash
-curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
+```js
+const { online } = await api("/presence");
+// online: [{ id, login, display_name, avatar_url, is_online: true }, …]
 ```
 
-```json
-{
-  "online": [
-    {
-      "id": 20,
-      "login": "dmpeer",
-      "display_name": "DM Peer",
-      "avatar_url": null,
-      "is_online": true
-    }
-  ]
-}
-```
-
-Live : WS `presence.snapshot` / `online` / `offline` — voir [Chat & temps réel](./chat-realtime).
+Live : WS `presence.snapshot` / `online` / `offline` — [Chat & temps réel](./chat-realtime).
 
 ## Recette page Amis
 
-1. Charger following + followers  
-2. Formulaire follow → `POST`  
+1. `api("/friends/following")` + `followers`  
+2. Form → `POST /friends/{login}`  
 3. Unfollow → `DELETE`  
-4. Bandeau online → `GET /presence` + WS  
+4. Bandeau → `api("/presence")` + WS  
 5. Clic profil → `/users/{login}`  
 
 ## Suite

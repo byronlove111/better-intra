@@ -1,17 +1,17 @@
 # Cookbook front
 
-Checklist d’intégration : chaque écran CDC → appels API. À utiliser comme carte mentale Swan.
+Checklist d’intégration : chaque écran CDC → appels `fetch` / `api()`.
 
-Suppose un helper `api()` avec `Authorization: Bearer` et `VITE_API_URL` (ou proxy Vite).
+Helper de base : [Premiers pas](./getting-started#helper-api).
 
 ## Global
 
 | Besoin | Comment |
 |---|---|
-| Boot session | `GET /auth/me` ou `GET /users/me` |
-| 401 | `POST /auth/refresh` → retry → sinon login |
-| Gate Intra | CTA → `GET /auth/42` → redirect |
-| Live | **Un** WebSocket `/ws?token=` partagé |
+| Boot session | `api("/auth/me")` ou `api("/users/me")` |
+| 401 | `api("/auth/refresh", { auth: false, method: "POST", body: { refresh_token } })` puis retry |
+| Gate Intra | CTA → `api("/auth/42")` → `window.location = authorize_url` |
+| Live | **Un** `WebSocket` `/ws?token=` partagé |
 
 <div class="doc-cards">
   <a class="doc-card" href="/auth"><strong>Auth</strong><span>Login, refresh, OAuth.</span></a>
@@ -23,59 +23,102 @@ Suppose un helper `api()` avec `Authorization: Bearer` et `VITE_API_URL` (ou pro
 
 ### Login / Signup
 
-`POST /auth/register` · `POST /auth/login` → stocker tokens → dashboard.
+```js
+const data = await api("/auth/login", {
+  auth: false,
+  method: "POST",
+  body: { email, password },
+});
+localStorage.setItem("access_token", data.access_token);
+localStorage.setItem("refresh_token", data.refresh_token);
+navigate("/");
+```
 
 ### Dashboard
 
-- `GET /me/intra` — niveau, wallet  
-- `GET /events?limit=5` — prochains events  
-- `GET /notifications?limit=5` — peek inbox  
-- Optionnel `GET /presence`  
+```js
+const [intra, agenda, notifs] = await Promise.all([
+  api("/me/intra"),
+  api("/events?limit=5"),
+  api("/notifications?limit=5"),
+]);
+// optionnel : api("/presence")
+```
 
 ### Profil
 
-- Soi : `GET|PATCH /users/me`  
-- Autre : `GET /users/{login}`  
-- Follow : `POST|DELETE /friends/{login}`  
-- DM si `is_betterintra_linked`  
-- Search : `GET /intra/users?q=`  
+```js
+const me = await api("/users/me");
+await api("/users/me", { method: "PATCH", body: { bio } });
+
+const other = await api(`/users/${login}`);
+await api(`/friends/${login}`, { method: "POST" });
+```
+
+Search : `api("/intra/users?q=…")`.
 
 ### Projets / Évals
 
-- `GET /me/intra/projects`  
-- `GET /me/intra/evaluations`  
-- Autre : `/intra/users/{login}/…`  
+```js
+const projects = await api("/me/intra/projects");
+const evals = await api("/me/intra/evaluations");
+```
 
 ### Agenda
 
-- `GET /events` (+ filtres)  
-- `POST|PATCH|DELETE /events/{id}` si `can_edit`  
+```js
+const agenda = await api(`/events?q=${encodeURIComponent(q)}&limit=40`);
+await api("/events", { method: "POST", body: eventPayload });
+if (item.can_edit) {
+  await api(`/events/${item.external_id}`, { method: "PATCH", body: patch });
+}
+```
 
 ### Logtime
 
-- `GET /analytics/logtime`  
-- `/analytics/logtime/export.csv` · `.pdf`  
+```js
+const stats = await api("/analytics/logtime");
+// PDF/CSV → voir Analytics (fetch + blob)
+```
 
 ### Amis
 
-- `/friends/following|followers|stats`  
-- Follow / unfollow  
-- Online : `/presence` + WS `presence.*`  
+```js
+const following = await api("/friends/following");
+const { online } = await api("/presence");
+```
+
++ WS `presence.*`.
 
 ### Chat
 
-- `/conversations`, `/messages`, `/…/read`, `/blocks`  
-- WS : `message.created`, `conversation.read`  
+```js
+const conversations = await api("/conversations");
+const messages = await api(`/conversations/${id}/messages?limit=50`);
+await api(`/conversations/${id}/read`, { method: "POST", body: {} });
+await api("/messages", { method: "POST", body: { to_login, body } });
+```
+
++ WS `message.created`, `conversation.read`.
 
 ### Notifications
 
-- `GET /notifications`  
-- WS : `notification.created`  
+```js
+const { items } = await api("/notifications?limit=50");
+```
+
++ WS `notification.created`.
 
 ### Settings API keys
 
-- `GET|POST /api-keys`, `DELETE /api-keys/{id}`  
-- Doc utilisateur → `/api/v1/events`  
+```js
+const keys = await api("/api-keys");
+const created = await api("/api-keys", { method: "POST", body: { name } });
+// montrer created.key une fois
+await api(`/api-keys/${id}`, { method: "DELETE" });
+```
+
+Appels automation : header `X-API-Key` sur `/api/v1/events` — [API publique](./public-api).
 
 ## Antisèche HTTP
 
@@ -90,7 +133,7 @@ Suppose un helper `api()` avec `Authorization: Bearer` et `VITE_API_URL` (ou pro
 
 ## Pas encore shippé
 
-`GET /recommendations` (module of choice) — à documenter à la livraison.
+`GET /recommendations` — à documenter à la livraison.
 
 ## Suite
 

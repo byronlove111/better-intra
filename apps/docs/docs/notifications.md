@@ -1,27 +1,16 @@
 # Notifications
 
-Inbox minimale : créer côté serveur, lister côté front, pousser en live. Pas de lu/non-lu, pas de mute.
+Inbox minimale : list via `fetch`, push live via WebSocket. Pas de lu/non-lu, pas de mute.
 
-Auth : JWT + Intra lié. TTL **7 jours**.
+Auth : JWT + Intra lié. TTL **7 jours**. Helper : [`api()`](./getting-started#helper-api).
 
 ## Lister
 
-```bash
-curl -s "$API/notifications?limit=50" -H "Authorization: Bearer $TOKEN"
-```
+```js
+const { items } = await api("/notifications?limit=50");
 
-```json
-{
-  "items": [
-    {
-      "id": 12,
-      "type": "follow",
-      "body": "dmpeer started following you",
-      "url": "/friends",
-      "created_at": "…"
-    }
-  ]
-}
+// items[0] →
+// { id, type: "follow"|"dm"|"event"|…, body, url, created_at }
 ```
 
 | Champ | Rôle |
@@ -39,14 +28,20 @@ curl -s "$API/notifications?limit=50" -H "Authorization: Bearer $TOKEN"
 | Follow reçu (compte BI) | Toi | `follow` |
 | Event BI créé | Tous les autres BI | `event` |
 
-Live : frame WS `notification.created` (même payload).
+Live : frame WS `notification.created` (même payload) — voir [Chat](./chat-realtime).
 
 ## Recette UI
 
-1. Page centre → `GET /notifications`  
-2. Badge → `items.length` (ou compteur local)  
-3. Clic → `navigate(url)`  
-4. WS → prepend + toast  
+```js
+const { items } = await api("/notifications?limit=50");
+setBadge(items.length);
+
+function onNotifClick(n) {
+  navigate(n.url); // ex. /chat, /friends, /agenda
+}
+
+// Sur WS notification.created → prepend + toast
+```
 
 ## Suite
 

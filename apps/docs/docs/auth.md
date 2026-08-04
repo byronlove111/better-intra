@@ -1,26 +1,24 @@
 # Authentification
 
-Crée un compte BetterIntra, récupère des JWT, puis lie optionnellement Intra 42 pour débloquer le campus.
+Crée un compte BetterIntra, récupère des JWT via `fetch`, puis lie optionnellement Intra 42.
+
+Les snippets utilisent le helper [`api()` des premiers pas](./getting-started#helper-api).
 
 ## Avant de commencer
 
-- API lancée ([Premiers pas](./getting-started))
-- Pour OAuth 42 : `FORTY_TWO_CLIENT_ID`, `FORTY_TWO_CLIENT_SECRET`, `FORTY_TWO_REDIRECT_URI`, `FRONTEND_URL`
+- API lancée + `VITE_API_URL`
+- Pour OAuth 42 : `FORTY_TWO_*` et `FRONTEND_URL` côté serveur
 
 ## Register
 
-```bash
-curl -s -X POST "$API/auth/register" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"alice@student.42.fr","password":"alicepass1"}'
-```
-
-```ts
+```js
 const data = await api("/auth/register", {
+  auth: false,
   method: "POST",
-  body: JSON.stringify({ email, password }),
+  body: { email: "alice@student.42.fr", password: "alicepass1" },
 });
-// persister data.access_token + data.refresh_token
+localStorage.setItem("access_token", data.access_token);
+localStorage.setItem("refresh_token", data.refresh_token);
 ```
 
 | Status | Quand |
@@ -29,51 +27,47 @@ const data = await api("/auth/register", {
 | `409` | Email déjà enregistré |
 | `422` | Email invalide ou password trop court |
 
-Les passwords sont hashés **Argon2id** — jamais stockés en clair.
+Les passwords sont hashés **Argon2id** côté serveur.
 
 ## Login
 
-```bash
-curl -s -X POST "$API/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"alice@student.42.fr","password":"alicepass1"}'
+```js
+const data = await api("/auth/login", {
+  auth: false,
+  method: "POST",
+  body: { email: "alice@student.42.fr", password: "alicepass1" },
+});
+localStorage.setItem("access_token", data.access_token);
+localStorage.setItem("refresh_token", data.refresh_token);
 ```
 
-Même `TokenResponse` que le register.
+Même forme de réponse que le register.
 
 ## Refresh
 
-L’access JWT expire (~60 min). Échange le refresh (~30 jours) sans redemander le password :
+L’access JWT expire (~60 min). Échange le refresh (~30 jours) :
 
-```bash
-curl -s -X POST "$API/auth/refresh" \
-  -H 'Content-Type: application/json' \
-  -d "{\"refresh_token\":\"$REFRESH\"}"
-```
-
-```ts
-async function refreshSession() {
-  const refresh_token = localStorage.getItem("refresh_token");
-  const data = await fetch(`${API}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token }),
-  }).then((r) => r.json());
-  localStorage.setItem("access_token", data.access_token);
-  localStorage.setItem("refresh_token", data.refresh_token);
-}
+```js
+const refresh_token = localStorage.getItem("refresh_token");
+const data = await api("/auth/refresh", {
+  auth: false,
+  method: "POST",
+  body: { refresh_token },
+});
+localStorage.setItem("access_token", data.access_token);
+localStorage.setItem("refresh_token", data.refresh_token);
 ```
 
 **Pattern front :** sur `401` → refresh une fois → retry → sinon logout.
 
 ## Session courante
 
-```bash
-curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
+```js
+const user = await api("/auth/me");
+// user.email, user.login, user.is_intra_linked, …
 ```
 
-Retourne `UserOut` (email, login, `is_intra_linked`, …).  
-Pour le profil unifié de l’écran Profil, utilise plutôt [`GET /users/me`](./users-profiles).
+Pour le profil unifié de l’écran Profil → [`GET /users/me`](./users-profiles).
 
 ## Lier Intra 42
 
@@ -87,13 +81,8 @@ Sans ce lien : friends, chat, proxy, analytics → **403**.
 4. Intra rappelle `GET /auth/callback?code&state`  
 5. API redirige vers `FRONTEND_URL/?intra=linked` (ou `intra=error`)
 
-```bash
-curl -s "$API/auth/42" -H "Authorization: Bearer $TOKEN"
-# {"authorize_url":"https://api.intra.42.fr/oauth/authorize?..."}
-```
-
-```ts
-const { authorize_url } = await api<{ authorize_url: string }>("/auth/42");
+```js
+const { authorize_url } = await api("/auth/42");
 window.location.href = authorize_url;
 ```
 
@@ -101,14 +90,19 @@ window.location.href = authorize_url;
 N’appelle **pas** `/auth/callback` depuis la SPA. Le navigateur y arrive depuis 42.
 :::
 
-Après succès, `GET /auth/me` montre `login`, `forty_two_id`, `is_intra_linked: true`.
+Après succès :
+
+```js
+const me = await api("/auth/me");
+console.log(me.login, me.is_intra_linked); // true
+```
 
 ## Recette page Login
 
-1. Form → `POST /auth/login` ou `/register`  
+1. Form → `api("/auth/login"|"/auth/register", …)`  
 2. Persister les tokens  
-3. Si `!is_intra_linked` → CTA → étape OAuth  
-4. Au boot → `GET /auth/me` ou `/users/me` ; refresh sur 401  
+3. Si `!is_intra_linked` → CTA OAuth  
+4. Au boot → `api("/auth/me")` ; refresh sur 401  
 
 ## Suite
 

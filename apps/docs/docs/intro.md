@@ -5,9 +5,9 @@ slug: /
 
 # Documentation BetterIntra
 
-Construis le front (ou un client) sur l’API FastAPI : auth duale, data 42 en lecture, social et temps réel chez nous.
+Construis le front sur l’API FastAPI : auth duale, data 42 en lecture, social et temps réel chez nous.
 
-Cette doc est pensée comme un **produit** : chaque page te dit quoi faire, pourquoi, puis te donne des exemples prêts à coller. Le contrat machine reste sur [Swagger](http://localhost:8000/docs).
+Cette doc est pensée comme un **produit** : chaque page te dit quoi faire, pourquoi, puis te donne des exemples **JavaScript (`fetch`)** prêts à coller. Le contrat machine reste sur [Swagger](http://localhost:8000/docs).
 
 <div class="doc-cards">
   <a class="doc-card" href="/getting-started">
@@ -36,18 +36,31 @@ Cette doc est pensée comme un **produit** : chaque page te dit quoi faire, pour
 4. Le guide de la feature que tu implémentes  
 5. [Cookbook front](./frontend-cookbook) pour câbler les écrans  
 
-## Conventions
+## Conventions JS
 
 Tous les exemples partent de :
 
-```bash
-export API=http://localhost:8000
-export TOKEN='<access_jwt>'
-```
+```js
+const API = import.meta.env.VITE_API_URL; // ex. http://localhost:8000
 
-```http
-Authorization: Bearer $TOKEN
-Content-Type: application/json
+async function api(path, { method = "GET", body, auth = true } = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (auth) {
+    const token = localStorage.getItem("access_token");
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`${res.status}: ${err}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
 ```
 
 Les erreurs API sont en général `{ "detail": "..." }`.

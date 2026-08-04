@@ -1,16 +1,17 @@
 # Events (JWT)
 
-Un seul feed calendrier : campus Intra + events BetterIntra. CRUD BI via JWT.
+Un seul feed calendrier : campus Intra + events BetterIntra. CRUD BI via JWT + `fetch`.
 
-Auth : JWT. Sans Intra, la partie Intra est vide ; les events BI restent disponibles.
+Auth : JWT. Helper : [`api()`](./getting-started#helper-api).
 
 ## Lister l’agenda
 
-```bash
-curl -s "$API/events?limit=20" -H "Authorization: Bearer $TOKEN"
+```js
+const agenda = await api("/events?limit=20");
 
-curl -s "$API/events?q=impro&limit=50&offset=0&sources=intra&sources=betterintra" \
-  -H "Authorization: Bearer $TOKEN"
+const filtered = await api(
+  `/events?q=${encodeURIComponent("impro")}&limit=50&offset=0&sources=intra&sources=betterintra`,
+);
 ```
 
 | Param | Rôle |
@@ -21,79 +22,54 @@ curl -s "$API/events?q=impro&limit=50&offset=0&sources=intra&sources=betterintra
 | `kind` | Filtre kind Intra |
 | `limit` / `offset` | Pagination |
 
-```json
-{
-  "items": [
-    {
-      "id": "intra:123",
-      "source": "intra",
-      "external_id": "123",
-      "title": "42 Impro",
-      "begin_at": "…",
-      "can_edit": false
-    },
-    {
-      "id": "betterintra:9",
-      "source": "betterintra",
-      "external_id": "9",
-      "title": "Lab meetup",
-      "can_edit": true,
-      "creator_id": 7
-    }
-  ],
-  "sources_included": ["intra", "betterintra"],
-  "meta": { "limit": 20, "offset": 0, "total_returned": 2 }
+```js
+for (const item of agenda.items) {
+  // item.id → "intra:123" | "betterintra:9"
+  // item.can_edit → afficher edit/delete (BI)
 }
-```
-
-```ts
-const agenda = await api<Agenda>(`/events?limit=40&q=${encodeURIComponent(q)}`);
-// item.can_edit → afficher edit / delete
 ```
 
 ## Créer un event BI
 
-```bash
-curl -s -X POST "$API/events" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "title": "Study session",
-    "description": "Optional",
-    "location": "Cluster",
-    "begin_at": "2026-08-10T18:00:00+02:00",
-    "end_at": "2026-08-10T20:00:00+02:00"
-  }'
+```js
+const created = await api("/events", {
+  method: "POST",
+  body: {
+    title: "Study session",
+    description: "Optional",
+    location: "Cluster",
+    begin_at: "2026-08-10T18:00:00+02:00",
+    end_at: "2026-08-10T20:00:00+02:00",
+  },
+});
+// created.id → numérique BI ; notifie les autres users (type: event)
 ```
 
-- `end_at` doit être après `begin_at` sinon **422**  
-- Notifie les autres users BI (`type: event`)  
-- Réponse : `EventOut` avec `id` **numérique** BI  
+`end_at` doit être après `begin_at` sinon **422**.
 
 ## Get / patch / delete
 
-Utilise l’id numérique (`9`), pas `betterintra:9`.
+Utilise l’id **numérique** (`9`), pas `betterintra:9`.
 
-```bash
-curl -s "$API/events/9" -H "Authorization: Bearer $TOKEN"
+```js
+const one = await api("/events/9");
 
-curl -s -X PATCH "$API/events/9" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"Study session (moved)"}'
+const patched = await api("/events/9", {
+  method: "PATCH",
+  body: { title: "Study session (moved)" },
+});
 
-curl -s -X DELETE "$API/events/9" \
-  -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"
+await api("/events/9", { method: "DELETE" }); // 204
 ```
 
 Seul le créateur peut muter.
 
 ## Recette Agenda
 
-1. `GET /events` + filtres  
-2. Formulaire → `POST /events`  
-3. Si `source === "betterintra" && can_edit` → PATCH/DELETE via `external_id`  
-4. Automation externe → [API publique](./public-api)  
+1. `api("/events?…")`  
+2. Form → `POST /events`  
+3. Si `can_edit` → PATCH/DELETE via `external_id`  
+4. Automation → [API publique](./public-api)  
 
 ## Suite
 
