@@ -79,7 +79,7 @@ const { online } = await api<{ online: Peer[] }>("/presence");
 
 Live updates: WebSocket `presence.snapshot` / `presence.online` / `presence.offline`  
 (scoped: snapshot = your follows; broadcasts go to **your followers**).  
-See [chat-realtime](./chat-realtime.md).
+See [chat-realtime](./chat-realtime).
 
 ## Implementing the Amis page
 

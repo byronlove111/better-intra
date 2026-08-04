@@ -72,7 +72,7 @@ curl -s -X DELETE "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN" -o /dev
 curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
 ```
 
-Online **follows** only — [friends-presence](./friends-presence.md).
+Online **follows** only — [friends-presence](./friends-presence).
 
 ## WebSocket
 

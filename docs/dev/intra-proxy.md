@@ -34,11 +34,11 @@ Items: `role` (`corrector` | `corrected`), `project_name`, `final_mark`, `correc
 
 ### Logtime raw (`GET /me/intra/logtime`)
 
-Location sessions from Intra. For **stats + PDF/CSV**, prefer [analytics](./analytics.md).
+Location sessions from Intra. For **stats + PDF/CSV**, prefer [analytics](./analytics).
 
 ### Campus events (`GET /me/intra/events`)
 
-Raw Intra campus events. Prefer unified `GET /events` for the Agenda page ([events](./events.md)).
+Raw Intra campus events. Prefer unified `GET /events` for the Agenda page ([events](./events)).
 
 ## Search users
 

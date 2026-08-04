@@ -102,7 +102,7 @@ Many social / campus routes require **JWT + Intra linked** (`403` with `"Link yo
 
 Flow: login → `GET /auth/42` → redirect user to `authorize_url` → callback links account → `user.is_intra_linked === true`.
 
-Details: [auth.md](./auth.md).
+Details: [auth](./auth).
 
 ## 7. Migrations
 
@@ -115,5 +115,5 @@ uv run alembic upgrade head
 
 ## Next
 
-- [Architecture & auth matrix](./architecture.md)
-- [Frontend cookbook](./frontend-cookbook.md)
+- [Architecture & auth matrix](./architecture)
+- [Frontend cookbook](./frontend-cookbook)

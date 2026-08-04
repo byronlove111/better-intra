@@ -100,4 +100,4 @@ Only the creator can mutate (expect 403/404 otherwise).
 1. `GET /events` with filters for the calendar/list.
 2. Create form → `POST /events`.
 3. For `source === "betterintra" && can_edit` → PATCH/DELETE with `external_id` or parse id from composite.
-4. For automation / external clients → [public-api](./public-api.md).
+4. For automation / external clients → [public-api](./public-api).

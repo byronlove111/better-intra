@@ -79,4 +79,4 @@ if (profile.is_betterintra_linked) {
 | Message button | only if `is_betterintra_linked` → chat `POST /messages` |
 | Online badge | `profile.is_online` |
 
-Also see [friends-presence](./friends-presence.md) and [intra-proxy](./intra-proxy.md).
+Also see [friends-presence](./friends-presence) and [intra-proxy](./intra-proxy).

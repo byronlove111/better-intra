@@ -4,7 +4,8 @@ Modern Intra-like dashboard for 42: read from the official 42 API (OAuth), write
 
 Product scope: `docs/cahier-des-charges.md` (18 pts target).
 
-Developer API guides: `docs/dev/` (how to call endpoints, frontend cookbook).
+Developer API guides: `docs/dev/` (how to call endpoints, frontend cookbook).  
+Docs site: `apps/docs` (`pnpm start` → http://localhost:3000).
 
 ## Stack
 

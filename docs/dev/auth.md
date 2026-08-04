@@ -65,7 +65,7 @@ curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
 ```
 
 Returns `UserOut` (email, login, avatar, `is_intra_linked`, …).  
-For the **unified** profile used by the Profil page, prefer `GET /users/me` ([users-profiles](./users-profiles.md)).
+For the **unified** profile used by the Profil page, prefer `GET /users/me` ([users-profiles](./users-profiles)).
 
 ## Link Intra (OAuth 42)
 

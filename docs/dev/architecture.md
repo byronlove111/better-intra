@@ -76,5 +76,5 @@ Multi-worker / multi-host would need Redis later — not required for the subjec
 
 ## Related product docs
 
-- Scope / points: [`../cahier-des-charges.md`](../cahier-des-charges.md)
-- Deploy: [`../deploiement.md`](../deploiement.md), [`../devops.md`](../devops.md)
+- Scope / points: [cahier-des-charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md)
+- Deploy: [deploiement](https://github.com/byronlove111/better-intra/blob/main/docs/deploiement.md), [devops](https://github.com/byronlove111/better-intra/blob/main/docs/devops.md)
