@@ -34,10 +34,10 @@ const config: Config = {
       'classic',
       {
         docs: {
-          path: '../../docs/dev',
+          path: 'docs',
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/byronlove111/better-intra/tree/main/docs/dev/',
+          editUrl: 'https://github.com/byronlove111/better-intra/tree/main/apps/docs/docs/',
         },
         blog: false,
         theme: {

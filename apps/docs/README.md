@@ -1,6 +1,6 @@
 # `apps/docs` — Docusaurus (self-hosté)
 
-Affiche le markdown de [`docs/dev/`](../../docs/dev/) en site de documentation local.
+Documentation développeur de l’API BetterIntra.
 
 ## Lancer
 
@@ -22,10 +22,7 @@ pnpm serve
 
 Sortie : `apps/docs/build/` (prêt pour nginx).
 
-## Workflow contenu
+## Contenu
 
-1. Éditer le markdown dans **`docs/dev/`** (source de vérité, en français).
-2. Ordre de la sidebar : `apps/docs/sidebars.ts`.
-3. Config / thème : `docusaurus.config.ts`, `src/css/custom.css`.
-
-Ne mets pas les guides longs dans `apps/docs/docs/` — le contenu vit dans l’arbre `docs/dev/` du repo.
+Édite les pages dans **`apps/docs/docs/`** (français).  
+Sidebar : `sidebars.ts` · config / thème : `docusaurus.config.ts`, `src/css/custom.css`.
