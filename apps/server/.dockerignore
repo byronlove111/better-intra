@@ -1,0 +1,28 @@
+# Contexte de build envoyé au démon Docker. Sans ce fichier, `docker compose
+# build` embarque le .venv local (des centaines de Mo, inutile puisque l'image
+# refait son propre `uv sync`) et surtout un éventuel apps/server/.env — des
+# secrets 42 qui n'ont rien à faire dans une image.
+
+# Secrets / config locale
+.env
+.env.*
+!.env.example
+
+# Environnement Python local (l'image reconstruit le sien)
+.venv/
+__pycache__/
+*.py[oc]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Artefacts de build
+build/
+dist/
+wheels/
+
+# Divers
+.git/
+.DS_Store
+*.log
