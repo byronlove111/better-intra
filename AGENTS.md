@@ -4,6 +4,8 @@ Modern Intra-like dashboard for 42: read from the official 42 API (OAuth), write
 
 Product scope: `docs/cahier-des-charges.md` (18 pts target).
 
+Docs API (Docusaurus) : `apps/docs` (`pnpm start` → http://localhost:3000).
+
 ## Stack
 
 | Layer | Choice |

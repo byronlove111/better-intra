@@ -4,24 +4,37 @@
 
 A modern Intra-inspired dashboard for 42. Sign in with 42, read school data (42 API), social/org features in our Postgres.
 
-> Status: **scaffolding**. API code exists; front (Swan) and Docker/HTTPS (Ayoub) are ownership stubs.
-
 Product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 
 ## Ownership
 
 | Who | Owns |
 |---|---|
-| **Swan** | Frontend — [`apps/web/README.md`](apps/web/README.md) |
-| **Malik** | Backend API — `apps/server` |
+| **Swan** | Frontend — [`apps/web`](apps/web) |
+| **Malik** | Backend API — [`apps/server`](apps/server) |
 | **Ayoub** | Docker / HTTPS / run éval — [`docs/devops.md`](docs/devops.md) |
 | **Kylian** | Recommendations scoring |
 
-## Stack (backend today)
+## Quick links (dev local)
+
+| Quoi | URL | Comment démarrer |
+|---|---|---|
+| **Swagger** (OpenAPI) | http://localhost:8000/docs | API allumée (voir ci-dessous) |
+| **ReDoc** | http://localhost:8000/redoc | idem |
+| **Health** | http://localhost:8000/health | idem |
+| **Docs développeur** (Docusaurus) | http://localhost:3001 | `cd apps/docs && pnpm install && pnpm exec docusaurus start --port 3001` |
+| **Preview front** (api-lab, pas Swan) | http://localhost:5174 | `cd apps/api-lab && pnpm install && pnpm dev` |
+| **Front officiel** (Swan) | — | [`apps/web`](apps/web) |
+
+En Docker / HTTPS : Swagger sur https://localhost:8443/docs — détails dans [`docs/deploiement.md`](docs/deploiement.md).
+
+## Stack
 
 - **API** — Python 3.14 + UV + FastAPI + SQLAlchemy — `apps/server`
 - **DB** — PostgreSQL 16
-- **Web / Compose** — not in repo yet (Swan / Ayoub)
+- **Docs API** — Docusaurus — `apps/docs`
+- **Preview UI** — Vite + React — `apps/api-lab` (smoke / démo, pas le front de rendu)
+- **Web officiel** — `apps/web` (Swan)
 
 ## Run with Docker (recommandé)
 
@@ -34,8 +47,6 @@ API en HTTPS : https://localhost:8443/docs. Détails, ports, troubleshooting : [
 
 ## Postgres without Docker (dev alternatif)
 
-Si tu préfères ne pas passer par Compose, Postgres local (macOS / Homebrew) :
-
 ```bash
 brew install postgresql@16
 brew services start postgresql@16
@@ -45,12 +56,8 @@ psql -d postgres -c "ALTER ROLE betterintra WITH LOGIN PASSWORD 'betterintra';"
 createdb -O betterintra betterintra 2>/dev/null || true
 ```
 
-Matches `apps/server/.env.example` :
+`DATABASE_URL` (cf. `apps/server/.env.example`) :
 `postgresql+psycopg://betterintra:betterintra@localhost:5432/betterintra`
-
-```bash
-brew services stop postgresql@16   # stop when done
-```
 
 ## Run the API (dev, without Docker)
 
@@ -58,32 +65,62 @@ brew services stop postgresql@16   # stop when done
 cd apps/server
 cp .env.example .env
 uv sync
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-| URL | |
-|---|---|
-| Swagger | http://localhost:8000/docs |
-| Health | http://localhost:8000/health |
-| DB health | http://localhost:8000/health/db |
+Puis ouvre **Swagger** : http://localhost:8000/docs
 
-Front: [`apps/web/README.md`](apps/web/README.md).
+## Docs développeur (Docusaurus)
+
+Guides FR pour brancher le front / clients sur l’API (auth, Intra, events, chat, analytics…).
+
+```bash
+cd apps/docs
+pnpm install
+pnpm exec docusaurus start --port 3001
+```
+
+→ http://localhost:3001
+
+(`pnpm start` sans port utilise 3000 par défaut — à éviter si le front web tourne déjà dessus.)
+
+Plus de détail : [`apps/docs/README.md`](apps/docs/README.md).
+
+## Preview front (api-lab)
+
+UI jetable qui consomme toute l’API (login, dashboard, chat/WS, etc.). Utile pour smoke-tester pendant que Swan code `apps/web`.
+
+```bash
+# API sur :8000
+cd apps/api-lab
+pnpm install
+pnpm dev
+```
+
+→ http://localhost:5174 (proxy Vite vers l’API)
 
 ## Environment
 
 Never commit real `.env` or 42 secrets.
 
-- `DATABASE_URL` — Postgres
-- `CORS_ORIGINS` — front origin(s)
-- `FORTY_TWO_*` — OAuth (later)
+| Variable | Where | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `apps/server` | Postgres |
+| `CORS_ORIGINS` | `apps/server` | Origines front autorisées |
+| `FORTY_TWO_*` | `apps/server` | OAuth 42 |
+| `FRONTEND_URL` | `apps/server` | Redirect après OAuth |
 
 ## Layout
 
 ```
 better-intra/
-├── apps/web/       # Swan
-├── apps/server/    # Malik
-├── docs/           # CDC, devops brief, …
+├── apps/
+│   ├── server/     # FastAPI (Malik)
+│   ├── web/        # Front officiel (Swan)
+│   ├── api-lab/    # Preview / smoke UI
+│   └── docs/       # Docs API (Docusaurus)
+├── docs/           # CDC, devops, déploiement…
 └── AGENTS.md
 ```
 
