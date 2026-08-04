@@ -1,80 +1,54 @@
-import { useMemo, useState } from "react";
-import { AuthPanel } from "./panels/AuthPanel";
-import { ProfilePanel } from "./panels/ProfilePanel";
-import { IntraPanel } from "./panels/IntraPanel";
-import { FriendsPanel } from "./panels/FriendsPanel";
-import { ChatPanel } from "./panels/ChatPanel";
-import { EventsPanel } from "./panels/EventsPanel";
-import { PublicApiPanel } from "./panels/PublicApiPanel";
-import { AnalyticsPanel, HealthPanel, NotificationsPanel } from "./panels/MiscPanels";
-import { getAccessToken } from "./lib/storage";
-import "./styles.css";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider, useAuth } from "./lib/auth";
+import { SocketProvider } from "./lib/ws";
+import { AppShell } from "./components/AppShell";
+import { Spinner } from "./components/ui";
+import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { AgendaPage } from "./pages/AgendaPage";
+import { FriendsPage } from "./pages/FriendsPage";
+import { ChatPage } from "./pages/ChatPage";
+import { EvaluationsPage, LogtimePage, NotificationsPage } from "./pages/MorePages";
 
-const TABS = [
-  "Auth",
-  "Profile",
-  "Intra",
-  "Friends",
-  "Chat / WS",
-  "Events",
-  "Public API",
-  "Analytics",
-  "Notifications",
-  "Health",
-] as const;
+function ProtectedLayout() {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  return (
+    <SocketProvider enabled={Boolean(user.is_intra_linked)}>
+      <AppShell />
+    </SocketProvider>
+  );
+}
 
-type Tab = (typeof TABS)[number];
+function LoginRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (user) return <Navigate to="/" replace />;
+  return <LoginPage />;
+}
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("Auth");
-  const [authed, setAuthed] = useState(() => Boolean(getAccessToken()));
-  const tokenPreview = useMemo(() => {
-    const t = getAccessToken();
-    if (!t) return "no token";
-    return `${t.slice(0, 12)}…`;
-  }, [authed]);
-
   return (
-    <>
-      <div className="topbar">
-        <div>
-          <h1>BetterIntra API Lab</h1>
-          <p className="sub">
-            Throwaway tester for Malik&apos;s API — not Swan&apos;s product front. Proxied to{" "}
-            <code>:8000</code> via Vite.
-          </p>
-        </div>
-        <span className={`badge ${authed ? "on" : ""}`}>
-          <span className="dot" />
-          {authed ? `JWT ${tokenPreview}` : "Logged out"}
-        </span>
-      </div>
-
-      <nav className="tabs">
-        {TABS.map((name) => (
-          <button
-            key={name}
-            className={tab === name ? "active" : ""}
-            onClick={() => setTab(name)}
-            type="button"
-          >
-            {name}
-          </button>
-        ))}
-      </nav>
-
-      {tab === "Auth" && (
-        <AuthPanel onAuthed={() => setAuthed(true)} onLogout={() => setAuthed(false)} />
-      )}
-      {tab === "Profile" && <ProfilePanel />}
-      {tab === "Intra" && <IntraPanel />}
-      {tab === "Friends" && <FriendsPanel />}
-      {tab === "Chat / WS" && <ChatPanel />}
-      {tab === "Events" && <EventsPanel />}
-      {tab === "Public API" && <PublicApiPanel />}
-      {tab === "Analytics" && <AnalyticsPanel />}
-      {tab === "Notifications" && <NotificationsPanel />}
-      {tab === "Health" && <HealthPanel />}
-    </>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginRoute />} />
+        <Route element={<ProtectedLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="profile/:login" element={<ProfilePage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="agenda" element={<AgendaPage />} />
+          <Route path="evaluations" element={<EvaluationsPage />} />
+          <Route path="logtime" element={<LogtimePage />} />
+          <Route path="friends" element={<FriendsPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }

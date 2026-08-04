@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getAccessToken } from "../lib/storage";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { getAccessToken } from "./storage";
 
 export type WsEvent = {
   at: string;
@@ -8,7 +17,23 @@ export type WsEvent = {
   raw: string;
 };
 
-export function useLabSocket(enabled: boolean) {
+type SocketContextValue = {
+  connected: boolean;
+  events: WsEvent[];
+  connect: () => void;
+  disconnect: () => void;
+  clear: () => void;
+};
+
+const SocketContext = createContext<SocketContextValue | null>(null);
+
+export function SocketProvider({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children: ReactNode;
+}) {
   const [connected, setConnected] = useState(false);
   const [events, setEvents] = useState<WsEvent[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
@@ -40,15 +65,7 @@ export function useLabSocket(enabled: boolean) {
         /* keep raw */
       }
       setEvents((prev) =>
-        [
-          {
-            at: new Date().toISOString(),
-            type,
-            payload,
-            raw: String(ev.data),
-          },
-          ...prev,
-        ].slice(0, 80),
+        [{ at: new Date().toISOString(), type, payload, raw: String(ev.data) }, ...prev].slice(0, 80),
       );
     };
   }, [disconnect]);
@@ -62,5 +79,35 @@ export function useLabSocket(enabled: boolean) {
     return () => disconnect();
   }, [enabled, connect, disconnect]);
 
-  return { connected, events, connect, disconnect, clear: () => setEvents([]) };
+  const value = useMemo(
+    () => ({
+      connected,
+      events,
+      connect,
+      disconnect,
+      clear: () => setEvents([]),
+    }),
+    [connected, events, connect, disconnect],
+  );
+
+  return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
+}
+
+export function useSocket() {
+  const ctx = useContext(SocketContext);
+  if (!ctx) {
+    return {
+      connected: false,
+      events: [] as WsEvent[],
+      connect: () => undefined,
+      disconnect: () => undefined,
+      clear: () => undefined,
+    };
+  }
+  return ctx;
+}
+
+/** @deprecated use useSocket */
+export function useLabSocket(_enabled: boolean) {
+  return useSocket();
 }
