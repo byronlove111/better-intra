@@ -1,45 +1,47 @@
-# API publique (events + clés API)
+# API publique
 
-Module Major : clés API personnelles + CRUD events BetterIntra sur `/api/v1/events`.
+Expose un CRUD events BetterIntra authentifié par **clé API** — module Major Web public API.
 
-## Gérer les clés (JWT)
+## Clés (JWT)
 
 ```bash
-# Créer — la clé brute n’est renvoyée QU’UNE FOIS
 curl -s -X POST "$API/api-keys" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"name":"ci-bot"}'
-# { "id": 1, "name": "ci-bot", "prefix": "bi_ab12", "key": "bi_ab12....", "created_at": "…" }
+```
 
+```json
+{
+  "id": 1,
+  "name": "ci-bot",
+  "prefix": "bi_ab12",
+  "key": "bi_ab12••••••••",
+  "created_at": "…"
+}
+```
+
+:::danger Une seule fois
+Le champ `key` (brut) n’apparaît qu’à la création. Ensuite tu ne vois que le `prefix`.
+:::
+
+```bash
 curl -s "$API/api-keys" -H "Authorization: Bearer $TOKEN"
-
 curl -s -X DELETE "$API/api-keys/1" -H "Authorization: Bearer $TOKEN"
 ```
 
-```ts
-const created = await api<{ key: string; id: number }>("/api-keys", {
-  method: "POST",
-  body: JSON.stringify({ name: "my-script" }),
-});
-// afficher created.key une fois ; stocker en secrets manager / local sécurisé
-```
+- Stockage : hash SHA-256  
+- Rate limit : par clé / minute (`API_KEY_RATE_LIMIT_PER_MINUTE`, défaut 60)
 
-Les clés sont hashées au repos (SHA-256). Rate limit : par clé, par minute (`API_KEY_RATE_LIMIT_PER_MINUTE`, défaut 60).
+## Events `/api/v1/events`
 
-## Appeler `/api/v1/events` avec `X-API-Key`
+Header : `X-API-Key: <clé brute>` — **pas** de JWT. Scopé au propriétaire de la clé.
 
-Pas de JWT. Header : `X-API-Key: <clé brute>`.
-
-### Lister
+### List / create
 
 ```bash
 curl -s "$API/api/v1/events?limit=20" -H "X-API-Key: $API_KEY"
-```
 
-### Créer
-
-```bash
 curl -s -X POST "$API/api/v1/events" \
   -H "X-API-Key: $API_KEY" \
   -H 'Content-Type: application/json' \
@@ -52,7 +54,7 @@ curl -s -X POST "$API/api/v1/events" \
   }'
 ```
 
-### Get / replace / delete
+### Get / put / delete
 
 ```bash
 curl -s "$API/api/v1/events/9" -H "X-API-Key: $API_KEY"
@@ -68,16 +70,19 @@ curl -s -X PUT "$API/api/v1/events/9" \
     "end_at": "2026-08-12T12:00:00Z"
   }'
 
-curl -s -X DELETE "$API/api/v1/events/9" -H "X-API-Key: $API_KEY" -o /dev/null -w "%{http_code}\n"
+curl -s -X DELETE "$API/api/v1/events/9" -H "X-API-Key: $API_KEY"
 ```
 
-Scopé aux events du **propriétaire de la clé**.
+Les **5** endpoints Major + OpenAPI (`/docs`) + rate limit = exigences du sujet.
 
-## Page settings front (suggestion)
+## Recette settings front
 
-1. Lister les clés (`prefix`, dates) — ne jamais re-afficher le secret.
-2. Créer → modal copie-une-fois de la clé brute.
-3. Révoquer → `DELETE /api-keys/{id}`.
-4. Lien vers Swagger `/docs` tag `public-api`.
+1. Lister clés (prefix + dates)  
+2. Créer → modal « copie maintenant »  
+3. Révoquer → `DELETE`  
+4. Lien Swagger tag `public-api`  
 
-OpenAPI compte comme la doc exigée par le Major.
+## Suite
+
+- [Events JWT](./events) (feed front)  
+- [Architecture](./architecture)  

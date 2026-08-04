@@ -1,62 +1,55 @@
-# Proxy Intra (lecture seule 42)
+# Proxy Intra
 
-Toutes les routes : JWT + Intra lié.  
-Le backend utilise les tokens 42 stockés du user. **Aucune écriture** sur Intra.
+Lis les data école **sans jamais** appeler `api.intra.42.fr` depuis le navigateur. Auth : JWT + Intra lié. Lecture seule.
 
 ## Moi
 
 ```bash
 curl -s "$API/me/intra" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/me/intra/projects" -H "Authorization: Bearer $TOKEN"
-curl -s "$API/me/intra/events" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/me/intra/evaluations" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/me/intra/logtime" -H "Authorization: Bearer $TOKEN"
+curl -s "$API/me/intra/events" -H "Authorization: Bearer $TOKEN"
 ```
 
-### Profil (`GET /me/intra`)
+### Profil — `GET /me/intra`
 
-`IntraProfileOut` normalisé : `login`, `displayname`, `wallet`, `correction_point`, `campus[]`, `cursus[]` (avec `level`, `grade`, …).
+`login`, `displayname`, `wallet`, `correction_point`, `campus[]`, `cursus[]` (`level`, `grade`, …).
 
 ```ts
 const me = await api<IntraProfile>("/me/intra");
 const level = me.cursus[0]?.level;
 ```
 
-### Projets (`GET /me/intra/projects`)
+### Projets / évals
 
-Page paginée : `{ items: IntraProjectOut[], meta }`.
+Pages `{ items, meta }` :
 
-Champs : `project_name`, `status`, `final_mark`, `validated`, `marked_at`.
+- Projets : `project_name`, `status`, `final_mark`, `validated`, `marked_at`
+- Évals : `role` (`corrector` \| `corrected`), `project_name`, `corrector_login`, `begin_at`
 
-### Évaluations (`GET /me/intra/evaluations`)
+### Logtime & events bruts
 
-Items : `role` (`corrector` | `corrected`), `project_name`, `final_mark`, `corrector_login`, `corrected_logins`, `begin_at`.
+- Sessions locations : `GET /me/intra/logtime`  
+- Pour **stats + PDF/CSV** → [Analytics](./analytics)  
+- Events campus bruts : `GET /me/intra/events` — pour l’Agenda produit préfère [Events unifiés](./events)
 
-### Logtime brut (`GET /me/intra/logtime`)
-
-Sessions de locations Intra. Pour les **stats + PDF/CSV**, préfère [analytics](./analytics).
-
-### Events campus (`GET /me/intra/events`)
-
-Events campus Intra bruts. Pour la page Agenda, préfère le feed unifié `GET /events` ([events](./events)).
-
-## Chercher des users
+## Recherche users
 
 ```bash
 curl -s "$API/intra/users?q=abb&page=1&page_size=20" \
   -H "Authorization: Bearer $TOKEN"
 
-# login exact
 curl -s "$API/intra/users?q=abbouras&exact=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ```ts
 const page = await api(`/intra/users?q=${encodeURIComponent(q)}`);
-// page.items → naviguer vers /profile/:login ou GET /users/:login
+// → naviguer vers GET /users/:login pour le profil produit
 ```
 
-## Autre user
+## Autre élève
 
 ```bash
 curl -s "$API/intra/users/abbouras" -H "Authorization: Bearer $TOKEN"
@@ -65,15 +58,23 @@ curl -s "$API/intra/users/abbouras/evaluations" -H "Authorization: Bearer $TOKEN
 curl -s "$API/intra/users/abbouras/logtime" -H "Authorization: Bearer $TOKEN"
 ```
 
-Pour un **profil produit** (bio + flags BI + online), utilise `GET /users/{login}` plutôt que `/intra/users/{login}`.
+:::tip Profil produit
+Bio, flags BI, online → [`GET /users/{login}`](./users-profiles), pas `/intra/users/{login}`.
+:::
 
-## Implémenter les pages
+## Recette pages
 
-| Page | Appels principaux |
+| Page | Appels |
 |---|---|
-| KPIs Dashboard | `GET /me/intra` (+ `/events`, `/notifications`) |
+| Dashboard KPIs | `GET /me/intra` (+ events, notifs) |
 | Projets | `GET /me/intra/projects` |
 | Évaluations | `GET /me/intra/evaluations` |
-| Recherche users | `GET /intra/users?q=` |
+| Search | `GET /intra/users?q=` |
 
-Gérer **403** → CTA lier Intra. Gérer rate limits / 502 du proxy comme erreurs retryables.
+Gère **403** (CTA Intra) et les 502 / rate-limit 42 comme retryables.
+
+## Suite
+
+- [Events](./events)  
+- [Analytics](./analytics)  
+- [Users & profils](./users-profiles)  

@@ -1,94 +1,98 @@
 # Cookbook front
 
-Correspondance pages CDC → appels API. Checklist d’intégration pour Swan.
+Checklist d’intégration : chaque écran CDC → appels API. À utiliser comme carte mentale Swan.
 
-On suppose un `api()` qui envoie `Authorization: Bearer <access>` et un `VITE_API_URL` qui pointe vers l’API (ou un proxy Vite).
+Suppose un helper `api()` avec `Authorization: Bearer` et `VITE_API_URL` (ou proxy Vite).
 
 ## Global
 
 | Besoin | Comment |
 |---|---|
-| Restaurer la session | `GET /auth/me` ou `GET /users/me` au boot |
-| Gestion 401 | `POST /auth/refresh` puis retry ; sinon login |
-| Gate Intra | Si `!is_intra_linked` → CTA → `GET /auth/42` → redirect |
-| Live | Un seul `WebSocket` partagé vers `/ws?token=…` pour chat/présence/notifs |
+| Boot session | `GET /auth/me` ou `GET /users/me` |
+| 401 | `POST /auth/refresh` → retry → sinon login |
+| Gate Intra | CTA → `GET /auth/42` → redirect |
+| Live | **Un** WebSocket `/ws?token=` partagé |
 
-## Login / Signup
+<div class="doc-cards">
+  <a class="doc-card" href="/auth"><strong>Auth</strong><span>Login, refresh, OAuth.</span></a>
+  <a class="doc-card" href="/chat-realtime"><strong>Realtime</strong><span>WS events à brancher.</span></a>
+  <a class="doc-card" href="/architecture"><strong>Matrice</strong><span>JWT vs Intra vs API key.</span></a>
+</div>
 
-- `POST /auth/register` / `POST /auth/login`
-- Stocker les tokens ; router vers le dashboard
+## Écrans
 
-## Dashboard
+### Login / Signup
 
-- `GET /me/intra` — niveau, wallet, points de correction  
-- `GET /events?limit=5` — à venir  
-- `GET /notifications?limit=5` — aperçu inbox  
-- Optionnel : `GET /presence` — widget amis online  
+`POST /auth/register` · `POST /auth/login` → stocker tokens → dashboard.
 
-## Profil (soi / autre)
+### Dashboard
 
-- Soi : `GET /users/me`, bio `PATCH /users/me`  
+- `GET /me/intra` — niveau, wallet  
+- `GET /events?limit=5` — prochains events  
+- `GET /notifications?limit=5` — peek inbox  
+- Optionnel `GET /presence`  
+
+### Profil
+
+- Soi : `GET|PATCH /users/me`  
 - Autre : `GET /users/{login}`  
 - Follow : `POST|DELETE /friends/{login}`  
-- DM si `is_betterintra_linked` : naviguer chat avec `to_login`  
+- DM si `is_betterintra_linked`  
 - Search : `GET /intra/users?q=`  
 
-## Projets
+### Projets / Évals
 
 - `GET /me/intra/projects`  
-- Autre user : `GET /intra/users/{login}/projects`  
-
-## Agenda
-
-- Liste/filtres : `GET /events?q=&sources=&begin_at=&end_at=`  
-- Créer BI : `POST /events`  
-- Éditer/supprimer BI : `PATCH|DELETE /events/{id}` si `can_edit`  
-
-## Évaluations
-
 - `GET /me/intra/evaluations`  
+- Autre : `/intra/users/{login}/…`  
 
-## Logtime
+### Agenda
+
+- `GET /events` (+ filtres)  
+- `POST|PATCH|DELETE /events/{id}` si `can_edit`  
+
+### Logtime
 
 - `GET /analytics/logtime`  
-- Export : `/analytics/logtime/export.csv` + `.pdf`  
+- `/analytics/logtime/export.csv` · `.pdf`  
 
-## Amis
+### Amis
 
-- `GET /friends/following`, `/followers`, `/stats`  
-- `POST|DELETE /friends/{login}`  
-- Online : `GET /presence` + WS `presence.*`  
+- `/friends/following|followers|stats`  
+- Follow / unfollow  
+- Online : `/presence` + WS `presence.*`  
 
-## Chat
+### Chat
 
-- `GET /conversations`  
-- `GET /conversations/{id}/messages`  
-- `POST /conversations/{id}/read`  
-- `POST /messages` `{ to_login, body }`  
-- Blocks : `/blocks`  
+- `/conversations`, `/messages`, `/…/read`, `/blocks`  
 - WS : `message.created`, `conversation.read`  
 
-## Notifications
+### Notifications
 
 - `GET /notifications`  
 - WS : `notification.created`  
 
-## Settings (clés API)
+### Settings API keys
 
 - `GET|POST /api-keys`, `DELETE /api-keys/{id}`  
-- Documenter `/api/v1/events` pour l’automation  
+- Doc utilisateur → `/api/v1/events`  
 
-## Antisèche erreurs UX
+## Antisèche HTTP
 
-| HTTP | Sens typique | UI |
+| Code | Sens | UI |
 |---|---|---|
-| 401 | JWT manquant/mauvais/expiré | Refresh ou login |
-| 403 | Intra non lié / pas autorisé | CTA ou toast |
-| 404 | Login / event inconnu | Empty state |
-| 409 | Follow / email en doublon | Erreur inline |
-| 422 | Validation | Afficher les erreurs de `detail` |
-| 429 | Rate limit clé API | Backoff |
+| `401` | JWT | Refresh / login |
+| `403` | Intra / droits | CTA ou toast |
+| `404` | Inconnu | Empty |
+| `409` | Conflit | Inline |
+| `422` | Validation | Afficher `detail` |
+| `429` | Rate limit clé | Backoff |
 
-## Encore manquant côté backend
+## Pas encore shippé
 
-Peer recommendations (`GET /recommendations`) — pas encore implémenté (module of choice). À documenter quand ce sera shippé.
+`GET /recommendations` (module of choice) — à documenter à la livraison.
+
+## Suite
+
+- [Premiers pas](./getting-started)  
+- [Architecture](./architecture)  

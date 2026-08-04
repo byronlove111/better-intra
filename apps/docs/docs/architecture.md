@@ -1,80 +1,85 @@
-# Architecture (backend)
+# Architecture
+
+Comment l’API est découpée, où vivent les secrets, et quelle auth chaque surface exige.
 
 ## Modèle mental
 
-```
-Browser / SPA
-    │  JWT (ou X-API-Key pour les events publics)
-    ▼
-FastAPI (apps/server)
-    ├── Postgres BetterIntra  ← écritures : users, follows, events, chat, notifs, api keys
-    └── api.intra.42.fr       ← lectures seules (tokens OAuth stockés sur User)
-```
-
-Règles :
-
-1. **Ne jamais** appeler `api.intra.42.fr` depuis le navigateur.
-2. Compte email/password ≠ lien Intra. Les deux coexistent.
-3. Le graphe social est **Intra-first** : tu peux follow n’importe quel login 42 ; les champs BetterIntra apparaissent s’ils ont un compte BI (`is_betterintra_linked`).
-
-## Layout des packages
-
-```
-apps/server/app/
-  auth/           # register, login, refresh, OAuth 42
-  users/          # profils unifiés
-  friends/        # follows
-  intra/          # proxy 42 + cache intra_people
-  events/         # events BI JWT + public /api/v1
-  agenda/         # merge feeds Intra + BI
-  api_keys/       # clés perso + rate limit
-  chat/           # DM, blocks, presence REST
-  realtime/       # hub WebSocket
-  notifications/  # inbox + hooks
-  analytics/      # agrégats logtime + export
+```text
+SPA / client
+   │  JWT  (ou X-API-Key pour /api/v1/events)
+   ▼
+FastAPI  apps/server
+   ├── Postgres BetterIntra   ← écritures sociales / orga
+   └── api.intra.42.fr        ← lectures seules (tokens OAuth sur User)
 ```
 
-## Matrice d’auth (qui peut appeler quoi)
+Trois règles non négociables :
 
-| Zone | Auth |
+1. Le navigateur **ne parle jamais** à `api.intra.42.fr`.
+2. Compte email/password ≠ lien Intra — les deux coexistent.
+3. Le social est **Intra-first** : follow n’importe quel login 42 ; les champs BI apparaissent si `is_betterintra_linked`.
+
+## Packages
+
+| Dossier | Responsabilité |
 |---|---|
-| `POST /auth/register`, `/login`, `/refresh` | Public |
-| `GET /auth/callback` | Public (redirect navigateur depuis 42) |
-| `GET /health*` | Public |
-| `GET/PATCH /users/me`, `GET /auth/me`, `GET /auth/42` | JWT |
-| `POST/GET/DELETE /api-keys` | JWT |
-| `GET/POST/PATCH/DELETE /events` (feed JWT + CRUD BI) | JWT (`GET` marche sans Intra ; items Intra vides si non lié) |
-| `GET /users/{login}`, friends, proxy Intra, chat, presence, notifs, analytics, `/ws` | JWT **+ Intra lié** |
-| `/api/v1/events*` | `X-API-Key` (pas JWT) |
+| `auth/` | Register, login, refresh, OAuth 42 |
+| `users/` | Profils unifiés |
+| `friends/` | Follows |
+| `intra/` | Proxy 42 + cache `intra_people` |
+| `events/` + `agenda/` | Events BI + feed unifié |
+| `api_keys/` | Clés + rate limit |
+| `chat/` + `realtime/` | DM, blocks, WS |
+| `notifications/` | Inbox + hooks |
+| `analytics/` | Logtime + exports |
 
-`require_intra_linked` → HTTP **403** si `forty_two_id` est null.
+## Matrice d’auth
 
-## Objets d’identité que tu verras dans le JSON
-
-| Flag / champ | Signification |
+| Surface | Auth requise |
 |---|---|
-| `is_intra_linked` | Ce user BetterIntra a connecté OAuth 42 |
-| `is_betterintra_linked` | Cette identité Intra a un compte BI (sur `/users/{login}` / cartes amis) |
+| Register / login / refresh, health, callback OAuth | Public |
+| `/auth/me`, `/auth/42`, `/users/me`, api-keys, CRUD `/events` JWT | JWT |
+| `/users/{login}`, friends, proxy Intra, chat, presence, notifs, analytics, `/ws` | JWT **+ Intra lié** |
+| `/api/v1/events*` | `X-API-Key` |
+
+`require_intra_linked` → **403** si `forty_two_id` est null.
+
+## Flags d’identité (JSON)
+
+| Champ | Signification |
+|---|---|
+| `is_intra_linked` | Ce compte BI a connecté OAuth 42 |
+| `is_betterintra_linked` | Cette identité Intra a un compte BI |
 | `login` / `forty_two_id` | Identité 42 |
-| `is_online` | WebSocket actif (comptes BI seulement ; `null` si Intra-only) |
+| `is_online` | WS actif (BI only ; `null` si Intra-only) |
 
 ## Temps réel
 
-Hub in-memory mono-processus (`app/realtime/ws_manager.py`) :
+Hub in-memory mono-processus (`realtime/ws_manager.py`) :
 
-- Connexion : `ws://host/ws?token=<access_jwt>` (Intra requis)
+- `ws://host/ws?token=<access_jwt>` (Intra requis)
 - Events : `presence.*`, `message.created`, `conversation.read`, `notification.created`
-- La présence est **scopée aux follows** (pas globale)
+- Présence **scopée aux follows** (pas globale)
 
-Multi-worker / multi-host → Redis plus tard — pas requis pour le MVP sujet.
+:::note Scale
+Multi-worker / multi-host → Redis plus tard. Hors scope MVP sujet.
+:::
 
-## Mots de passe & secrets
+## Secrets
 
-- Passwords users : **Argon2id** (`pwdlib`), colonne `password_hash` — jamais en clair.
-- Clés API : hash SHA-256 stocké ; clé brute renvoyée **une seule fois** à la création.
-- Tokens 42 access/refresh : stockés pour appeler Intra (nécessaire côté serveur).
+| Secret | Stockage |
+|---|---|
+| Password user | Argon2id (`password_hash`) — jamais en clair |
+| Clé API | SHA-256 ; brute renvoyée **une fois** à la création |
+| Tokens 42 | En BDD pour appeler Intra côté serveur |
 
-## Docs produit liées
+## Docs produit
 
-- Scope / points : [cahier-des-charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md)
-- Deploy : [deploiement](https://github.com/byronlove111/better-intra/blob/main/docs/deploiement.md), [devops](https://github.com/byronlove111/better-intra/blob/main/docs/devops.md)
+- [Cahier des charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md)
+- [Déploiement](https://github.com/byronlove111/better-intra/blob/main/docs/deploiement.md) · [DevOps](https://github.com/byronlove111/better-intra/blob/main/docs/devops.md)
+
+## Suite
+
+- [Premiers pas](./getting-started)  
+- [Authentification](./auth)  
+- [Cookbook front](./frontend-cookbook)  

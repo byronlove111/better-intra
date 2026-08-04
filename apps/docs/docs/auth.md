@@ -1,10 +1,13 @@
-# Auth
+# Authentification
 
-Base path : `/auth`
+Crée un compte BetterIntra, récupère des JWT, puis lie optionnellement Intra 42 pour débloquer le campus.
+
+## Avant de commencer
+
+- API lancée ([Premiers pas](./getting-started))
+- Pour OAuth 42 : `FORTY_TWO_CLIENT_ID`, `FORTY_TWO_CLIENT_SECRET`, `FORTY_TWO_REDIRECT_URI`, `FRONTEND_URL`
 
 ## Register
-
-Crée un compte BetterIntra. Password min 8 caractères. Hashé en Argon2id.
 
 ```bash
 curl -s -X POST "$API/auth/register" \
@@ -13,18 +16,20 @@ curl -s -X POST "$API/auth/register" \
 ```
 
 ```ts
-await api("/auth/register", {
+const data = await api("/auth/register", {
   method: "POST",
   body: JSON.stringify({ email, password }),
 });
-// stocker access_token + refresh_token
+// persister data.access_token + data.refresh_token
 ```
 
 | Status | Quand |
 |---|---|
-| 201 | Créé + tokens |
-| 409 | Email déjà enregistré |
-| 422 | Validation (email invalide / password trop court) |
+| `201` | Compte créé + tokens |
+| `409` | Email déjà enregistré |
+| `422` | Email invalide ou password trop court |
+
+Les passwords sont hashés **Argon2id** — jamais stockés en clair.
 
 ## Login
 
@@ -38,7 +43,7 @@ Même `TokenResponse` que le register.
 
 ## Refresh
 
-Quand l’access JWT expire (défaut ~60 min), échanger le refresh token (défaut ~30 jours) :
+L’access JWT expire (~60 min). Échange le refresh (~30 jours) sans redemander le password :
 
 ```bash
 curl -s -X POST "$API/auth/refresh" \
@@ -47,39 +52,40 @@ curl -s -X POST "$API/auth/refresh" \
 ```
 
 ```ts
-const data = await fetch(`${API}/auth/refresh`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ refresh_token: refreshToken }),
-}).then((r) => r.json());
-localStorage.setItem("access_token", data.access_token);
-localStorage.setItem("refresh_token", data.refresh_token);
+async function refreshSession() {
+  const refresh_token = localStorage.getItem("refresh_token");
+  const data = await fetch(`${API}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token }),
+  }).then((r) => r.json());
+  localStorage.setItem("access_token", data.access_token);
+  localStorage.setItem("refresh_token", data.refresh_token);
+}
 ```
 
-Pattern front : sur `401`, tenter un refresh une fois, retry la requête d’origine, sinon logout.
+**Pattern front :** sur `401` → refresh une fois → retry → sinon logout.
 
-## User courant (carte compte JWT)
+## Session courante
 
 ```bash
 curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
 ```
 
-Retourne `UserOut` (email, login, avatar, `is_intra_linked`, …).  
-Pour le profil **unifié** de la page Profil, préfère `GET /users/me` ([users-profiles](./users-profiles)).
+Retourne `UserOut` (email, login, `is_intra_linked`, …).  
+Pour le profil unifié de l’écran Profil, utilise plutôt [`GET /users/me`](./users-profiles).
 
-## Lier Intra (OAuth 42)
+## Lier Intra 42
 
-### Pourquoi
+Sans ce lien : friends, chat, proxy, analytics → **403**.
 
-Sans ça, les features campus (proxy, friends, chat, analytics, …) renvoient **403**.
+### Flux
 
-### Flux front
-
-1. L’utilisateur est loggé (JWT).
-2. Appeler `GET /auth/42`.
-3. Rediriger le navigateur vers `authorize_url`.
-4. L’utilisateur accepte sur Intra → 42 tape `GET /auth/callback`.
-5. L’API stocke les tokens 42 sur le user et **redirige** vers `FRONTEND_URL/?intra=linked` (ou `/?intra=error&reason=...`).
+1. SPA appelle `GET /auth/42` avec JWT  
+2. API renvoie `authorize_url`  
+3. Redirect navigateur vers Intra  
+4. Intra rappelle `GET /auth/callback?code&state`  
+5. API redirige vers `FRONTEND_URL/?intra=linked` (ou `intra=error`)
 
 ```bash
 curl -s "$API/auth/42" -H "Authorization: Bearer $TOKEN"
@@ -91,22 +97,21 @@ const { authorize_url } = await api<{ authorize_url: string }>("/auth/42");
 window.location.href = authorize_url;
 ```
 
-**Ne pas** appeler `/auth/callback` depuis la SPA — le navigateur y arrive depuis 42.
+:::warning
+N’appelle **pas** `/auth/callback` depuis la SPA. Le navigateur y arrive depuis 42.
+:::
 
-### Env requis côté API
+Après succès, `GET /auth/me` montre `login`, `forty_two_id`, `is_intra_linked: true`.
 
-`FORTY_TWO_CLIENT_ID`, `FORTY_TWO_CLIENT_SECRET`, `FORTY_TWO_REDIRECT_URI` (doit matcher l’app Intra), `FRONTEND_URL`.
+## Recette page Login
 
-### Après le lien
+1. Form → `POST /auth/login` ou `/register`  
+2. Persister les tokens  
+3. Si `!is_intra_linked` → CTA → étape OAuth  
+4. Au boot → `GET /auth/me` ou `/users/me` ; refresh sur 401  
 
-```bash
-curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
-# user.login, forty_two_id, is_intra_linked: true
-```
+## Suite
 
-## Implémenter une page login
-
-1. Form → `POST /auth/login` ou `/auth/register`.
-2. Persister les tokens (mémoire + `localStorage` / cookies — choix d’équipe).
-3. Si `!user.is_intra_linked`, CTA « Lie ton Intra » → étape OAuth ci-dessus.
-4. Au boot de l’app : `GET /auth/me` (ou `/users/me`) pour restaurer la session ; refresh sur 401.
+- [Users & profils](./users-profiles)  
+- [Proxy Intra](./intra-proxy)  
+- [Cookbook front](./frontend-cookbook)  

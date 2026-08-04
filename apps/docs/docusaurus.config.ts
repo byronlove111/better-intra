@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'BetterIntra',
-  tagline: 'Documentation développeur de l’API BetterIntra',
+  tagline: 'API docs qui se lisent comme un produit',
   favicon: 'img/favicon.ico',
 
   future: {

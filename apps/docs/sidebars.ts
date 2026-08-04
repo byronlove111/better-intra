@@ -11,7 +11,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Guides API',
+      label: 'Guides',
       collapsed: false,
       items: [
         'auth',

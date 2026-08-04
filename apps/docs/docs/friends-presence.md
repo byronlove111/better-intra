@@ -1,16 +1,17 @@
 # Amis & présence
 
-Base path : `/friends` · présence : `GET /presence`  
+Follow n’importe quelle identité Intra. Affiche qui est online **parmi tes follows**.
+
 Auth : JWT + Intra lié.
 
 ## Concepts
 
-- Tu follow une **identité Intra** (`forty_two_id` / login), pas seulement des users BI.
-- Les cartes de réponse incluent `is_betterintra_linked`, éventuellement `bio` / `betterintra_user_id`, et `is_online` si lié BI.
-- Online = ce user BI a une connexion `/ws` active.
-- `GET /presence` renvoie **uniquement les gens que tu follow** qui sont online (pas tout le campus).
+- Tu follow un **login 42**, pas seulement des comptes BI.
+- Carte ami : `is_betterintra_linked`, `bio` / `betterintra_user_id` si BI, `is_online` si BI.
+- Online = WebSocket actif sur BetterIntra.
+- `GET /presence` ≠ « tout le campus » : uniquement tes follows online.
 
-## Mes following / followers / stats
+## Listes
 
 ```bash
 curl -s "$API/friends/following" -H "Authorization: Bearer $TOKEN"
@@ -18,42 +19,39 @@ curl -s "$API/friends/followers" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/friends/stats" -H "Authorization: Bearer $TOKEN"
 ```
 
-Exemple d’item `following` :
+Exemple d’item :
 
 ```json
 {
   "forty_two_id": 202953,
   "login": "abbouras",
   "display_name": "…",
-  "avatar_url": "…",
-  "followed_at": "…",
   "is_betterintra_linked": true,
   "betterintra_user_id": 7,
   "bio": "…",
-  "is_online": false
+  "is_online": false,
+  "followed_at": "…"
 }
 ```
 
 ## Follow / unfollow
 
 ```bash
-curl -s -X POST "$API/friends/kclaudan" -H "Authorization: Bearer $TOKEN"
-curl -s -X DELETE "$API/friends/kclaudan" -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"
-```
+curl -s -X POST "$API/friends/kclaudan" \
+  -H "Authorization: Bearer $TOKEN"
 
-```ts
-await api(`/friends/${login}`, { method: "POST" });   // 201 FriendOut
-await api(`/friends/${login}`, { method: "DELETE" }); // 204
+curl -s -X DELETE "$API/friends/kclaudan" \
+  -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"
 ```
 
 | Status | |
 |---|---|
-| 201 | Follow OK |
-| 409 | Déjà en follow |
-| 400 | Impossible de se follow soi-même |
-| 404 | Login Intra inconnu (lookup 42 échoué) |
+| `201` | Follow créé |
+| `409` | Déjà followed |
+| `400` | Self-follow |
+| `404` | Login Intra inconnu |
 
-Follow quelqu’un qui a un compte BI déclenche une **notification** chez lui (`type: follow`).
+Un follow vers un compte BI crée une [notification](./notifications) `type: follow`.
 
 ## Graphe d’un autre login
 
@@ -63,28 +61,40 @@ curl -s "$API/friends/abbouras/followers" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/friends/abbouras/stats" -H "Authorization: Bearer $TOKEN"
 ```
 
-`stats` inclut `is_following` pour le viewer (sauf sur ses propres stats).
+`stats.is_following` indique si **toi** follow cette identité.
 
-## Présence (REST)
+## Présence REST
 
 ```bash
 curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
-# { "online": [ { "id", "login", "display_name", "avatar_url", "is_online": true }, ... ] }
 ```
 
-```ts
-const { online } = await api<{ online: Peer[] }>("/presence");
-// pastilles vertes sur la liste d’amis / widget dashboard
+```json
+{
+  "online": [
+    {
+      "id": 20,
+      "login": "dmpeer",
+      "display_name": "DM Peer",
+      "avatar_url": null,
+      "is_online": true
+    }
+  ]
+}
 ```
 
-Updates live : WebSocket `presence.snapshot` / `presence.online` / `presence.offline`  
-(scopé : snapshot = tes follows ; broadcasts vers **tes followers**).  
-Voir [chat & temps réel](./chat-realtime).
+Live : WS `presence.snapshot` / `online` / `offline` — voir [Chat & temps réel](./chat-realtime).
 
-## Implémenter la page Amis
+## Recette page Amis
 
-1. `GET /friends/following` + `GET /friends/followers`.
-2. Formulaire → `POST /friends/{login}`.
-3. Unfollow → `DELETE`.
-4. Bandeau online → `GET /presence` + subscribe WS.
-5. Ouvrir un profil → route `/users/{login}`.
+1. Charger following + followers  
+2. Formulaire follow → `POST`  
+3. Unfollow → `DELETE`  
+4. Bandeau online → `GET /presence` + WS  
+5. Clic profil → `/users/{login}`  
+
+## Suite
+
+- [Users & profils](./users-profiles)  
+- [Chat & temps réel](./chat-realtime)  
+- [Notifications](./notifications)  

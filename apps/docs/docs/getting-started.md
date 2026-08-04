@@ -1,54 +1,59 @@
-# Démarrage
+# Premiers pas
+
+Obtiens un JWT et appelle ta première route protégée. Ensuite tu pourras lier Intra et brancher le reste des features.
+
+## Avant de commencer
+
+- Postgres accessible (`DATABASE_URL` dans `apps/server/.env`)
+- Python + UV dans `apps/server`
+- Optionnel : `FORTY_TWO_*` pour OAuth / proxy Intra
 
 ## 1. Lancer l’API
 
 ```bash
-# Postgres (Homebrew en alternatif) — ou Compose, voir docs/deploiement.md
 cd apps/server
-cp .env.example .env   # renseigner FORTY_TWO_* pour OAuth + proxy Intra
+cp .env.example .env
 uv sync
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Vérifie :
+
+```bash
+curl -s http://localhost:8000/health
+# {"status":"ok","service":"BetterIntra API"}
+
+curl -s http://localhost:8000/health/db
 ```
 
 | URL | Rôle |
 |---|---|
-| http://localhost:8000/docs | Swagger |
-| http://localhost:8000/health | Process OK |
-| http://localhost:8000/health/db | Postgres joignable |
+| http://localhost:8000/docs | OpenAPI / Swagger |
+| http://localhost:8000/health | Process vivant |
+| http://localhost:8000/health/db | Postgres OK |
 
-L’origine du front doit figurer dans `CORS_ORIGINS` (séparée par des virgules), ex. `http://localhost:3000,http://localhost:5174`.
+Ajoute l’origine de ton front dans `CORS_ORIGINS` (ex. `http://localhost:3000,http://localhost:5174`).
 
-## 2. Health check
+## 2. Créer un compte
 
-```bash
-curl -s "$API/health"
-# {"status":"ok","service":"BetterIntra API"}
-
-curl -s "$API/health/db"
-```
-
-## 3. Créer / se connecter à un compte BetterIntra
-
-Email + password est **obligatoire** (sujet). OAuth 42 est un lien en plus, pas un remplacement.
+BetterIntra exige **email + password** (exigence sujet). OAuth 42 vient après.
 
 ```bash
-# Register
 curl -s -X POST "$API/auth/register" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"dev@example.com","password":"devpass42!"}'
-
-# Login
-curl -s -X POST "$API/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"dev@example.com","password":"devpass42!"}'
+  -d '{
+    "email": "dev@example.com",
+    "password": "devpass42!"
+  }'
 ```
 
-Forme de la réponse :
+Réponse :
 
 ```json
 {
-  "access_token": "...",
-  "refresh_token": "...",
+  "access_token": "eyJ...",
+  "refresh_token": "eyJ...",
   "token_type": "bearer",
   "user": {
     "id": 1,
@@ -59,7 +64,18 @@ Forme de la réponse :
 }
 ```
 
-Sauver le token :
+Login (même forme de réponse) :
+
+```bash
+curl -s -X POST "$API/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "dev@example.com",
+    "password": "devpass42!"
+  }'
+```
+
+Export rapide du token :
 
 ```bash
 export TOKEN=$(curl -s -X POST "$API/auth/login" \
@@ -68,27 +84,28 @@ export TOKEN=$(curl -s -X POST "$API/auth/login" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
 ```
 
-## 4. Appeler une route protégée
+## 3. Appeler une route protégée
 
 ```bash
 curl -s "$API/auth/me" -H "Authorization: Bearer $TOKEN"
 ```
 
-## 5. Helper fetch côté front (pattern)
+## 4. Pattern front (fetch)
 
 ```ts
-async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
+async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("access_token");
   const res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
-    ...opts,
+    ...init,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opts.headers ?? {}),
+      ...(init.headers ?? {}),
     },
   });
+
   if (res.status === 401) {
-    // tenter /auth/refresh puis retry — voir auth
+    // voir Auth → refresh, puis retry
   }
   if (!res.ok) throw new Error(await res.text());
   if (res.status === 204) return undefined as T;
@@ -96,24 +113,25 @@ async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 ```
 
-## 6. Quand tu as besoin des data Intra
+## 5. Débloquer les data campus
 
-Beaucoup de routes sociales / campus exigent **JWT + Intra lié** (`403` avec `"Link your Intra account first"` sinon).
+Sans Intra lié, friends / chat / proxy / analytics renvoient **403**.
 
-Flux : login → `GET /auth/42` → rediriger l’utilisateur vers `authorize_url` → le callback lie le compte → `user.is_intra_linked === true`.
+Flux court : login → `GET /auth/42` → redirect `authorize_url` → callback API → `is_intra_linked: true`.
 
-Détails : [auth](./auth).
+Détails dans [Authentification](./auth).
 
-## 7. Migrations
+## Erreurs fréquentes
 
-Le schéma est géré avec Alembic sous `apps/server`. Après un pull :
-
-```bash
-cd apps/server
-uv run alembic upgrade head
-```
+| Status | Cause | Fix |
+|---|---|---|
+| 401 | Token manquant / expiré | Login ou [refresh](./auth#refresh) |
+| 403 | Intra non lié | CTA « Lie ton Intra » |
+| 409 | Email déjà pris | Login à la place |
+| 422 | Password moins de 8 / email invalide | Corriger le body |
 
 ## Suite
 
-- [Architecture & matrice d’auth](./architecture)
-- [Cookbook front](./frontend-cookbook)
+- [Architecture](./architecture) — qui peut appeler quoi  
+- [Cookbook front](./frontend-cookbook) — brancher les écrans  
+- [Authentification](./auth) — OAuth 42 en détail  

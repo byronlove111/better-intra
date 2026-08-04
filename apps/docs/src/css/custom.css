@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   --ifm-color-primary: #0f766e;
@@ -8,10 +8,19 @@
   --ifm-color-primary-light: #11847b;
   --ifm-color-primary-lighter: #128a81;
   --ifm-color-primary-lightest: #159b91;
-  --ifm-code-font-size: 95%;
+  --ifm-code-font-size: 13.5px;
+  --ifm-font-family-base: Inter, ui-sans-serif, system-ui, sans-serif;
+  --ifm-heading-font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --ifm-font-size-base: 16px;
+  --ifm-line-height-base: 1.65;
+  --ifm-heading-font-weight: 600;
+  --ifm-navbar-height: 64px;
+  --ifm-global-radius: 8px;
+  --ifm-code-background: #f6f8fa;
+  --ifm-color-content-secondary: #5f6b7a;
   --docusaurus-highlighted-code-line-bg: rgba(15, 118, 110, 0.08);
-  --ifm-font-family-base: "Instrument Sans", system-ui, sans-serif;
-  --ifm-heading-font-family: "Syne", system-ui, sans-serif;
+  --doc-surface: #ffffff;
+  --doc-border: #e3e8ee;
 }
 
 [data-theme='dark'] {
@@ -22,5 +31,139 @@
   --ifm-color-primary-light: #5eead4;
   --ifm-color-primary-lighter: #99f6e4;
   --ifm-color-primary-lightest: #ccfbf1;
+  --ifm-code-background: #12181f;
+  --doc-surface: #0b1114;
+  --doc-border: #243039;
   --docusaurus-highlighted-code-line-bg: rgba(45, 212, 191, 0.12);
+}
+
+html {
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+.navbar {
+  box-shadow: none;
+  border-bottom: 1px solid var(--doc-border);
+}
+
+.navbar__title {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.menu__link {
+  font-size: 0.925rem;
+  border-radius: 6px;
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  background: color-mix(in srgb, var(--ifm-color-primary) 10%, transparent);
+}
+
+.theme-doc-markdown {
+  max-width: 52rem;
+}
+
+.theme-doc-markdown > h1:first-child {
+  font-size: 2.25rem;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  margin-bottom: 0.75rem;
+}
+
+.theme-doc-markdown > h1:first-child + p {
+  font-size: 1.125rem;
+  color: var(--ifm-color-content-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.55;
+}
+
+.theme-doc-markdown h2 {
+  margin-top: 2.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--doc-border);
+  letter-spacing: -0.02em;
+}
+
+.theme-doc-markdown h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.theme-doc-markdown h3 {
+  letter-spacing: -0.015em;
+  margin-top: 1.75rem;
+}
+
+.theme-doc-markdown table {
+  display: table;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.theme-doc-markdown table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-content-secondary);
+}
+
+.theme-code-block {
+  border: 1px solid var(--doc-border);
+  box-shadow: none !important;
+}
+
+.pagination-nav__link {
+  border-color: var(--doc-border);
+}
+
+.footer {
+  border-top: 1px solid var(--doc-border);
+}
+
+/* Stripe-like “card grid” helpers via markdown HTML */
+.doc-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.doc-card {
+  display: block;
+  border: 1px solid var(--doc-border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  text-decoration: none !important;
+  color: inherit !important;
+  background: var(--doc-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.doc-card:hover {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 8px 24px -16px rgba(15, 23, 42, 0.35);
+}
+
+.doc-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.98rem;
+}
+
+.doc-card span {
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.doc-kicker {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ifm-color-primary);
+  margin-bottom: 0.5rem;
 }

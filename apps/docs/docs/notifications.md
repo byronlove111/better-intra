@@ -1,45 +1,55 @@
 # Notifications
 
-Base path : `/notifications`  
-Auth : JWT + Intra lié.
+Inbox minimale : créer côté serveur, lister côté front, pousser en live. Pas de lu/non-lu, pas de mute.
 
-## Modèle
-
-Inbox simple — **pas** de flags lu/non-lu, **pas** de mute.
-
-| Champ | |
-|---|---|
-| `type` | `dm` \| `follow` \| `event` \| `announcement` |
-| `body` | Texte humain |
-| `url` | Path front à ouvrir (ex. `/chat`, `/agenda`) |
-| `created_at` | Timestamp |
-
-Purge auto après **7 jours**.
+Auth : JWT + Intra lié. TTL **7 jours**.
 
 ## Lister
 
 ```bash
 curl -s "$API/notifications?limit=50" -H "Authorization: Bearer $TOKEN"
-# { "items": [ { "id", "type", "body", "url", "created_at" }, ... ] }
 ```
 
-```ts
-const { items } = await api<{ items: Notification[] }>("/notifications?limit=50");
+```json
+{
+  "items": [
+    {
+      "id": 12,
+      "type": "follow",
+      "body": "dmpeer started following you",
+      "url": "/friends",
+      "created_at": "…"
+    }
+  ]
+}
 ```
 
-## Quand les lignes sont créées (hooks serveur)
+| Champ | Rôle |
+|---|---|
+| `type` | `dm` \| `follow` \| `event` \| `announcement` |
+| `body` | Texte affiché |
+| `url` | Path front au clic |
+| `created_at` | Horodatage |
 
-| Trigger | Destinataire | `type` typique |
+## Quand ça se crée
+
+| Trigger | Destinataire | `type` |
 |---|---|---|
-| Quelqu’un te DM | Toi | `dm` |
-| Quelqu’un te follow (compte BI) | Toi | `follow` |
-| Quelqu’un crée un event BI | Tous les autres users BI | `event` |
+| DM reçu | Toi | `dm` |
+| Follow reçu (compte BI) | Toi | `follow` |
+| Event BI créé | Tous les autres BI | `event` |
 
-Aussi poussé en live : WS `notification.created` avec la même forme de payload.
+Live : frame WS `notification.created` (même payload).
 
-## Implémenter le centre de notifications
+## Recette UI
 
-1. Page : `GET /notifications`.
-2. Badge : `items.length` (ou compteur depuis dernière visite — côté client seulement).
-3. Clic sur une ligne → `navigate(notification.url)`.
-4. Garder le WS pour prepend + toast.
+1. Page centre → `GET /notifications`  
+2. Badge → `items.length` (ou compteur local)  
+3. Clic → `navigate(url)`  
+4. WS → prepend + toast  
+
+## Suite
+
+- [Chat & temps réel](./chat-realtime)  
+- [Events](./events)  
+- [Cookbook front](./frontend-cookbook)  

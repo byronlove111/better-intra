@@ -1,29 +1,27 @@
 # Chat & temps réel
 
-Auth : JWT + Intra lié. Les deux pairs doivent être BetterIntra + Intra liés pour DM.
+DM 1-to-1, blocks, présence, read receipts. REST pour l’historique, WebSocket pour le live.
 
-## Conversations
+Auth : JWT + Intra lié. Les deux pairs doivent être BI + Intra liés.
+
+## Conversations & messages
 
 ```bash
 curl -s "$API/conversations" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/conversations/3" -H "Authorization: Bearer $TOKEN"
-```
 
-`ConversationOut` inclut `peer` (`login`, `is_online`, …), `last_message`, `unread_count`, curseurs de lecture.
-
-## Messages
-
-Pagination curseur : page oldest → newest ; passer `before_id` pour l’historique plus ancien.
-
-```bash
-curl -s "$API/conversations/3/messages?limit=50" -H "Authorization: Bearer $TOKEN"
+# oldest → newest ; before_id pour remonter
+curl -s "$API/conversations/3/messages?limit=50" \
+  -H "Authorization: Bearer $TOKEN"
 curl -s "$API/conversations/3/messages?limit=50&before_id=100" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+`ConversationOut` : `peer` (dont `is_online`), `last_message`, `unread_count`, curseurs de lecture.
+
 ## Envoyer un DM
 
-Crée le thread 1:1 au premier message.
+Crée le thread au premier message.
 
 ```bash
 curl -s -X POST "$API/messages" \
@@ -37,33 +35,34 @@ const msg = await api<Message>("/messages", {
   method: "POST",
   body: JSON.stringify({ to_login, body }),
 });
-// msg.conversation_id → ouvrir le thread ; push WS + notif au destinataire
+// ouvrir msg.conversation_id ; WS + notif côté destinataire
 ```
 
 | Status | |
 |---|---|
-| 201 | Envoyé |
-| 403 | Peer non Intra-lié / bloqué / soi-même |
-| 404 | Login inconnu |
+| `201` | OK |
+| `403` | Peer non lié / bloqué / soi |
+| `404` | Login inconnu |
 
-## Marquer comme lu
+## Marquer lu
+
+Appelle à l’ouverture du thread :
 
 ```bash
 curl -s -X POST "$API/conversations/3/read" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{}'
-# optionnel : { "message_id": 42 }
 ```
 
-Appeler quand l’utilisateur ouvre le thread. Émet WS `conversation.read` vers le peer.
+Optionnel : `{ "message_id": 42 }`. Émet WS `conversation.read`.
 
 ## Blocks
 
 ```bash
 curl -s "$API/blocks" -H "Authorization: Bearer $TOKEN"
 curl -s -X POST "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN"
-curl -s -X DELETE "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"
+curl -s -X DELETE "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Présence REST
@@ -72,67 +71,63 @@ curl -s -X DELETE "$API/blocks/dmpeer" -H "Authorization: Bearer $TOKEN" -o /dev
 curl -s "$API/presence" -H "Authorization: Bearer $TOKEN"
 ```
 
-Online **parmi tes follows** seulement — [amis & présence](./friends-presence).
+Online = follows connectés. Détails : [Amis & présence](./friends-presence).
 
 ## WebSocket
 
-```
+```text
 ws://localhost:8000/ws?token=<access_jwt>
 ```
 
-(ou `wss://` en prod). Intra requis (`4403` sinon). Token manquant/invalide → `4401`.
+(`wss://` en prod). Codes close : `4401` auth, `4403` Intra manquant.
 
 ```ts
-const token = localStorage.getItem("access_token");
+const token = localStorage.getItem("access_token")!;
 const ws = new WebSocket(
-  `${location.protocol === "https:" ? "wss" : "ws"}://${apiHost}/ws?token=${encodeURIComponent(token!)}`,
+  `${location.protocol === "https:" ? "wss" : "ws"}://${apiHost}/ws?token=${encodeURIComponent(token)}`,
 );
 
 ws.onmessage = (ev) => {
-  const msg = JSON.parse(ev.data) as { type: string; payload: unknown };
-  switch (msg.type) {
+  const { type, payload } = JSON.parse(ev.data);
+  switch (type) {
     case "presence.snapshot":
     case "presence.online":
     case "presence.offline":
-      // maj amis online
+      updateOnlineFriends(payload);
       break;
     case "message.created":
-      // append si conversation ouverte ; bump inbox
+      appendOrBumpInbox(payload);
       break;
     case "conversation.read":
-      // maj read receipt du peer
+      updateReadReceipt(payload);
       break;
     case "notification.created":
-      // toast + badge
+      toastAndBadge(payload);
       break;
   }
 };
-
-// Keepalive optionnel : ws.send("ping") de temps en temps (le serveur ignore le payload)
 ```
 
-### Payloads des events (forme)
-
-Tous les frames : `{ "type": "<name>", "payload": { ... } }`.
-
-| type | payload (champs principaux) |
+| `type` | Payload (essentiel) |
 |---|---|
-| `presence.snapshot` | `{ online: Peer[] }` — tes follows actuellement online |
-| `presence.online` / `offline` | carte peer + `is_online` |
-| `message.created` | champs message + contexte conversation |
-| `conversation.read` | `{ conversation_id, user_id, last_read_message_id, ... }` |
-| `notification.created` | ligne notification |
+| `presence.snapshot` | `{ online: Peer[] }` (tes follows) |
+| `presence.online` / `offline` | peer + `is_online` |
+| `message.created` | message + contexte |
+| `conversation.read` | `conversation_id`, `user_id`, `last_read_message_id` |
+| `notification.created` | notif |
 
-Pas d’indicateurs de typing (hors scope).
+Pas de typing (hors scope). Offline = Postgres ; le WS est additif.
 
-### Comportement offline
+## Recette Chat
 
-Les messages sont toujours persistés en Postgres. Si le peer est offline, il charge l’historique via REST à la prochaine ouverture ; le WS est additif.
+1. Connecter WS + `GET /conversations`  
+2. Ouvrir thread → messages + `POST …/read`  
+3. Composer → `POST /messages`  
+4. Merger `message.created`  
+5. Afficher `peer.is_online`  
 
-## Implémenter le Chat
+## Suite
 
-1. Au mount : connecter le WS ; `GET /conversations`.
-2. Sélectionner un thread → `GET …/messages` + `POST …/read`.
-3. Composer → `POST /messages` avec `to_login` (ou peer connu).
-4. Sur `message.created`, merger dans le state / refetch.
-5. Afficher `peer.is_online` depuis la liste + events presence.
+- [Notifications](./notifications)  
+- [Amis & présence](./friends-presence)  
+- [Cookbook front](./frontend-cookbook)  
