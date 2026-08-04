@@ -4,6 +4,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
 # Lockfile copié seul d'abord : ce layer n'est invalidé (et les deps réinstallées)
 # que si pyproject.toml/uv.lock changent, pas à chaque modif du code.
 COPY pyproject.toml uv.lock ./
