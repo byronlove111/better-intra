@@ -1,78 +1,69 @@
 # Events (JWT)
 
-Un seul feed calendrier : campus Intra + events BetterIntra. CRUD BI via JWT + `fetch`.
+L’Agenda BetterIntra ne doit pas forcer le front à merger lui-même deux APIs. `GET /events` renvoie un **feed unifié** : events campus Intra + events créés chez nous, normalisés avec un `source`, un id composite, et un flag `can_edit` pour savoir si l’UI peut proposer patch/delete.
 
-Auth : JWT. Helper : [`api()`](./getting-started#helper-api).
+Auth : JWT. Sans Intra lié, la partie Intra est simplement vide ; tu peux quand même créer et gérer des events BetterIntra.
 
-## Lister l’agenda
+## Lire l’agenda
+
+Par défaut, sans plage de dates, l’API te donne l’**upcoming** (`begin_at` dans le futur). Tu peux filtrer avec `q` (recherche titre), `sources` (répéter le query param pour `intra` et/ou `betterintra`), `kind` pour les kinds Intra, et paginer avec `limit` / `offset`.
+
+Chaque item a un `id` du genre `intra:123` ou `betterintra:9`, un `external_id` (l’id brut dans la source), et `can_edit` à `true` seulement sur tes events BI. C’est ce flag qui pilote les boutons d’édition — pas une heuristique maison.
 
 ```js
-const agenda = await api("/events?limit=20");
+const agenda = await fetch("http://localhost:8000/events?limit=20", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 
-const filtered = await api(
-  `/events?q=${encodeURIComponent("impro")}&limit=50&offset=0&sources=intra&sources=betterintra`,
-);
+const filtered = await fetch(
+  "http://localhost:8000/events?q=impro&limit=50&sources=intra&sources=betterintra",
+  { headers: { Authorization: `Bearer ${access_token}` } },
+).then((r) => r.json());
 ```
 
-| Param | Rôle |
-|---|---|
-| `sources` | Répétable : `intra`, `betterintra` |
-| `begin_at` / `end_at` | ISO ; défaut = à venir |
-| `q` | Recherche titre |
-| `kind` | Filtre kind Intra |
-| `limit` / `offset` | Pagination |
+## Créer un event BetterIntra
+
+`POST /events` crée un event stocké chez nous. Tu envoies titre, dates ISO, et optionnellement description / lieu. `end_at` doit être strictement après `begin_at`, sinon **422**. La réponse est un `EventOut` avec un **id numérique** (celui que tu réutilises pour patch/delete).
+
+Créer un event notifie les autres users BetterIntra (`type: event`) : c’est voulu pour faire vivre le social autour de l’orga, pas seulement un calendrier silencieux.
 
 ```js
-for (const item of agenda.items) {
-  // item.id → "intra:123" | "betterintra:9"
-  // item.can_edit → afficher edit/delete (BI)
-}
-```
-
-## Créer un event BI
-
-```js
-const created = await api("/events", {
+const created = await fetch("http://localhost:8000/events", {
   method: "POST",
-  body: {
+  headers: {
+    Authorization: `Bearer ${access_token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
     title: "Study session",
     description: "Optional",
     location: "Cluster",
     begin_at: "2026-08-10T18:00:00+02:00",
     end_at: "2026-08-10T20:00:00+02:00",
-  },
-});
-// created.id → numérique BI ; notifie les autres users (type: event)
+  }),
+}).then((r) => r.json());
 ```
 
-`end_at` doit être après `begin_at` sinon **422**.
+## Modifier ou supprimer
 
-## Get / patch / delete
-
-Utilise l’id **numérique** (`9`), pas `betterintra:9`.
+Les mutations portent sur l’id numérique BI (`/events/9`), pas sur la forme composite `betterintra:9`. En pratique, depuis le feed, tu prends `item.external_id` quand `source === "betterintra"`. Seul le créateur peut muter ; sinon attends-toi à 403/404.
 
 ```js
-const one = await api("/events/9");
-
-const patched = await api("/events/9", {
+await fetch("http://localhost:8000/events/9", {
   method: "PATCH",
-  body: { title: "Study session (moved)" },
+  headers: {
+    Authorization: `Bearer ${access_token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ title: "Study session (moved)" }),
 });
 
-await api("/events/9", { method: "DELETE" }); // 204
+await fetch("http://localhost:8000/events/9", {
+  method: "DELETE",
+  headers: { Authorization: `Bearer ${access_token}` },
+});
 ```
 
-Seul le créateur peut muter.
+Pour des scripts / automation hors front JWT, le Major public API est documenté à part : [API publique](./public-api).
 
-## Recette Agenda
-
-1. `api("/events?…")`  
-2. Form → `POST /events`  
-3. Si `can_edit` → PATCH/DELETE via `external_id`  
-4. Automation → [API publique](./public-api)  
-
-## Suite
-
-- [API publique](./public-api)  
-- [Notifications](./notifications)  
-- [Cookbook front](./frontend-cookbook)  
+Suite : [Notifications](./notifications) (les notifs d’event), [Cookbook front](./frontend-cookbook).

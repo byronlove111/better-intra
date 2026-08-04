@@ -1,71 +1,47 @@
 # Users & profils
 
-Profils **Intra-first** : n’importe quel login 42 est adressable. Les champs BetterIntra n’apparaissent que s’il y a un compte BI.
+BetterIntra ne stocke pas « un user = une ligne Intra ». Le modèle est **Intra-first** : n’importe quel login 42 peut être ouvert en profil. Si cette personne a aussi un compte BetterIntra, on enrichit la carte avec bio, id BI et statut online. Sinon tu vois quand même le profil école, mais sans les features qui exigent un compte chez nous (DM, bio éditable de leur côté, pastille online).
 
-Helper : [`api()`](./getting-started#helper-api).
+## Mon profil unifié — `GET /users/me`
 
-## Mon profil unifié
+Cette route est faite pour l’écran « mon profil » et pour le header. Elle marche avec un JWT même si Intra n’est pas encore lié : dans ce cas `intra` est `null` et `is_intra_linked` est `false`. Quand Intra est lié, `intra` contient le bloc campus (wallet, cursus, campus, etc.).
+
+`is_betterintra_linked` est toujours `true` sur `/me` — tu es forcément un compte BI si tu as un JWT. `is_online` indique si **toi** as un WebSocket ouvert en ce moment.
 
 ```js
-const me = await api("/users/me");
-
-if (!me.is_intra_linked) {
-  // afficher CTA « Lie ton Intra »
-}
+const me = await fetch("http://localhost:8000/users/me", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 ```
-
-| Champ | Usage UI |
-|---|---|
-| `is_intra_linked` | CTA « Lie ton Intra » |
-| `is_betterintra_linked` | Toujours `true` sur `/me` |
-| `intra` | Bloc campus (ou `null`) |
-| `bio` | Bio éditable si Intra lié |
-| `is_online` | WS connecté (toi) |
-| `login`, `avatar_url`, `display_name` | Header |
-
-Auth : JWT (Intra optionnel pour lire `/me`).
 
 ## Éditer la bio
 
-JWT + **Intra lié**.
+La bio est une donnée BetterIntra, pas Intra. `PATCH /users/me` avec `{ bio }` la met à jour, mais seulement si Intra est lié (sinon **403**) : on évite les comptes « fantômes » qui peupleraient le social sans identité école. Limite 500 caractères.
 
 ```js
-const updated = await api("/users/me", {
+const updated = await fetch("http://localhost:8000/users/me", {
   method: "PATCH",
-  body: { bio: "Hello from BetterIntra" },
-});
+  headers: {
+    Authorization: `Bearer ${access_token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ bio: "Hello from BetterIntra" }),
+}).then((r) => r.json());
 ```
 
-Max 500 caractères. Sinon **403**.
+## Profil d’un autre login — `GET /users/{login}`
 
-## Profil d’un login 42
+Ici tu as besoin d’être toi-même Intra-lié (sinon tu ne peux pas résoudre l’identité via l’API 42). Le backend fetch le login sur Intra, met à jour le cache `intra_people`, et regarde s’il existe un user BI rattaché.
 
-JWT + Intra lié.
+Si `is_betterintra_linked` est vrai, tu peux montrer la bio, proposer un DM, et lire `is_online` comme booléen. S’il est faux, `is_online` vaut `null` : cette personne ne peut pas être « online sur BetterIntra », même si tu peux toujours la follow. C’est exactement le cas d’usage Intra-first du CDC.
 
 ```js
-const profile = await api(`/users/${encodeURIComponent(login)}`);
-
-if (profile.is_betterintra_linked) {
-  // bio, id BI, bouton DM, is_online boolean
-} else {
-  // Intra-only : follow OK, pas de DM
-}
-// is_online === null → pas de compte BI
+const profile = await fetch(
+  `http://localhost:8000/users/${encodeURIComponent(login)}`,
+  { headers: { Authorization: `Bearer ${access_token}` } },
+).then((r) => r.json());
 ```
 
-## Recette page Profil
+La recherche d’élèves avant d’ouvrir une fiche passe souvent par `GET /intra/users?q=` — voir [Proxy Intra](./intra-proxy). Follow : `POST /friends/{login}`. Le DM n’a de sens que si `is_betterintra_linked`.
 
-| UI | Appel |
-|---|---|
-| Soi | `api("/users/me")` |
-| Bio | `api("/users/me", { method: "PATCH", body: { bio } })` |
-| Recherche | `api("/intra/users?q=…")` puis `/users/{login}` |
-| Follow | `api("/friends/{login}", { method: "POST" })` |
-| Message | si `is_betterintra_linked` → [Chat](./chat-realtime) |
-| Online | `profile.is_online` |
-
-## Suite
-
-- [Amis & présence](./friends-presence)  
-- [Proxy Intra](./intra-proxy)  
-- [Chat](./chat-realtime)  
+Suite : [Amis & présence](./friends-presence) pour le graphe, [Chat](./chat-realtime) pour les DM.

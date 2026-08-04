@@ -1,71 +1,66 @@
 # Amis & présence
 
-Follow n’importe quelle identité Intra. Affiche qui est online **parmi tes follows**.
+Le module amis ne copie pas un carnet d’adresses BetterIntra fermé. Tu follow des **identités Intra** (un login 42). Certaines ont un compte chez nous, d’autres non. La présence online, elle, ne concerne que ceux qui ont un compte BI **et** un WebSocket ouvert — et tu ne vois que ceux que **tu** follow. Ça évite de transformer BetterIntra en annuaire global de qui est connecté sur le campus.
 
-Auth : JWT + Intra lié. Helper : [`api()`](./getting-started#helper-api).
+Auth : JWT + Intra lié.
 
-## Concepts
+## Lister following, followers et stats
 
-- Tu follow un **login 42**, pas seulement des comptes BI.
-- Carte ami : `is_betterintra_linked`, `bio` / `betterintra_user_id` si BI, `is_online` si BI.
-- Online = WebSocket actif sur BetterIntra.
-- `GET /presence` ≠ tout le campus : uniquement tes follows online.
-
-## Listes
+`GET /friends/following` renvoie les gens que tu follow, avec pour chacun les infos d’affichage (login, display name, avatar) et les flags utiles : `is_betterintra_linked`, éventuellement `bio` / `betterintra_user_id`, et `is_online` quand c’est un compte BI. `GET /friends/followers` liste ceux qui te follow (des users BetterIntra, puisqu’il faut un compte BI pour follow). `GET /friends/stats` te donne les compteurs pour un header « X following · Y followers ».
 
 ```js
-const following = await api("/friends/following");
-const followers = await api("/friends/followers");
-const stats = await api("/friends/stats");
+const following = await fetch("http://localhost:8000/friends/following", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 
-// following.items[0] →
-// { login, is_betterintra_linked, is_online, bio, betterintra_user_id, … }
+const followers = await fetch("http://localhost:8000/friends/followers", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
+
+const stats = await fetch("http://localhost:8000/friends/stats", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 ```
 
-## Follow / unfollow
+## Follow et unfollow
+
+`POST /friends/{login}` résout le login via Intra, crée/maj `intra_people`, et pose le lien. Tu ne peux pas te follow toi-même (**400**). Si le follow existe déjà, **409**. Si le login Intra est introuvable, **404**. Unfollow est un `DELETE` qui répond **204**.
+
+Quand tu follow quelqu’un qui a un compte BI, le serveur lui crée aussi une [notification](./notifications) de type `follow`.
 
 ```js
-await api(`/friends/${encodeURIComponent(login)}`, { method: "POST" }); // 201
-await api(`/friends/${encodeURIComponent(login)}`, { method: "DELETE" }); // 204 → null
+await fetch(`http://localhost:8000/friends/${encodeURIComponent(login)}`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${access_token}` },
+});
+
+await fetch(`http://localhost:8000/friends/${encodeURIComponent(login)}`, {
+  method: "DELETE",
+  headers: { Authorization: `Bearer ${access_token}` },
+});
 ```
 
-| Status | |
-|---|---|
-| `201` | Follow créé |
-| `409` | Déjà followed |
-| `400` | Self-follow |
-| `404` | Login Intra inconnu |
+## Regarder le graphe de quelqu’un d’autre
 
-Un follow vers un compte BI crée une [notification](./notifications) `type: follow`.
-
-## Graphe d’un autre login
+Les routes `/friends/{login}/following`, `/followers` et `/stats` permettent d’ouvrir le social d’un profil public. Sur les stats d’un autre, `is_following` te dit si **toi**, le viewer, follow déjà cette identité — utile pour l’état d’un bouton Follow/Following.
 
 ```js
-const theirFollowing = await api(`/friends/${login}/following`);
-const theirFollowers = await api(`/friends/${login}/followers`);
-const theirStats = await api(`/friends/${login}/stats`);
-// theirStats.is_following → est-ce que *toi* le follow ?
+const theirStats = await fetch(
+  `http://localhost:8000/friends/${login}/stats`,
+  { headers: { Authorization: `Bearer ${access_token}` } },
+).then((r) => r.json());
 ```
 
-## Présence
+## La présence, à quoi ça sert
+
+`GET /presence` répond : « parmi les gens que je follow, qui a un WS ouvert maintenant ? ». Ce n’est pas un remplacement du flag `is_online` sur un profil précis : pour un login donné, `GET /users/{login}` reste la source. En live, le WebSocket pousse `presence.snapshot` à la connexion, puis `presence.online` / `presence.offline` quand l’état change — détails dans [Chat & temps réel](./chat-realtime).
 
 ```js
-const { online } = await api("/presence");
-// online: [{ id, login, display_name, avatar_url, is_online: true }, …]
+const { online } = await fetch("http://localhost:8000/presence", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 ```
 
-Live : WS `presence.snapshot` / `online` / `offline` — [Chat & temps réel](./chat-realtime).
+Il n’y a pas de relation Friendship bilatérale à inventer : un follow suffit pour le produit « Amis » du CDC.
 
-## Recette page Amis
-
-1. `api("/friends/following")` + `followers`  
-2. Form → `POST /friends/{login}`  
-3. Unfollow → `DELETE`  
-4. Bandeau → `api("/presence")` + WS  
-5. Clic profil → `/users/{login}`  
-
-## Suite
-
-- [Users & profils](./users-profiles)  
-- [Chat & temps réel](./chat-realtime)  
-- [Notifications](./notifications)  
+Suite : [Users & profils](./users-profiles), [Chat](./chat-realtime), [Notifications](./notifications).

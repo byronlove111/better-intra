@@ -1,111 +1,76 @@
 # Authentification
 
-Crée un compte BetterIntra, récupère des JWT via `fetch`, puis lie optionnellement Intra 42.
+L’auth BetterIntra a deux étages. D’abord un compte local email/password qui te donne des JWT et te permet d’exister dans notre Postgres. Ensuite, optionnellement, un lien OAuth vers Intra 42 qui débloque la lecture des data école et la plupart des features sociales. Cette page explique à quoi sert chaque étape.
 
-Les snippets utilisent le helper [`api()` des premiers pas](./getting-started#helper-api).
+## Register et login
 
-## Avant de commencer
+`POST /auth/register` crée le compte. Le password doit faire au moins huit caractères ; il est immédiatement hashé en Argon2id, jamais stocké en clair. La réponse te donne déjà une session complète (access + refresh + objet user), pour enchaîner sans second round-trip.
 
-- API lancée + `VITE_API_URL`
-- Pour OAuth 42 : `FORTY_TWO_*` et `FRONTEND_URL` côté serveur
-
-## Register
+`POST /auth/login` fait la même chose pour un compte existant. Un mauvais couple email/password renvoie **401** avec un message volontairement vague (« Invalid email or password ») pour ne pas fuiter si l’email existe. Un email déjà pris au register renvoie **409**.
 
 ```js
-const data = await api("/auth/register", {
-  auth: false,
+const data = await fetch("http://localhost:8000/auth/register", {
   method: "POST",
-  body: { email: "alice@student.42.fr", password: "alicepass1" },
-});
-localStorage.setItem("access_token", data.access_token);
-localStorage.setItem("refresh_token", data.refresh_token);
-```
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: "alice@student.42.fr",
+    password: "alicepass1",
+  }),
+}).then((r) => r.json());
+// data.access_token, data.refresh_token, data.user
 
-| Status | Quand |
-|---|---|
-| `201` | Compte créé + tokens |
-| `409` | Email déjà enregistré |
-| `422` | Email invalide ou password trop court |
-
-Les passwords sont hashés **Argon2id** côté serveur.
-
-## Login
-
-```js
-const data = await api("/auth/login", {
-  auth: false,
+const session = await fetch("http://localhost:8000/auth/login", {
   method: "POST",
-  body: { email: "alice@student.42.fr", password: "alicepass1" },
-});
-localStorage.setItem("access_token", data.access_token);
-localStorage.setItem("refresh_token", data.refresh_token);
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: "alice@student.42.fr",
+    password: "alicepass1",
+  }),
+}).then((r) => r.json());
 ```
 
-Même forme de réponse que le register.
+## À quoi servent access et refresh
 
-## Refresh
-
-L’access JWT expire (~60 min). Échange le refresh (~30 jours) :
+L’access token est court (~60 minutes) et part dans `Authorization: Bearer …` sur presque toutes les routes. Le refresh dure plus longtemps (~30 jours) et ne sert qu’à obtenir une nouvelle paire sans redemander le password. Quand l’access expire, tu appelles `POST /auth/refresh` avec le refresh en body. Si le refresh échoue aussi, la session est morte.
 
 ```js
-const refresh_token = localStorage.getItem("refresh_token");
-const data = await api("/auth/refresh", {
-  auth: false,
+const data = await fetch("http://localhost:8000/auth/refresh", {
   method: "POST",
-  body: { refresh_token },
-});
-localStorage.setItem("access_token", data.access_token);
-localStorage.setItem("refresh_token", data.refresh_token);
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ refresh_token }),
+}).then((r) => r.json());
 ```
 
-**Pattern front :** sur `401` → refresh une fois → retry → sinon logout.
+## Savoir qui est connecté
 
-## Session courante
+`GET /auth/me` renvoie la carte compte liée au JWT : email, login Intra s’il est déjà lié, avatar, flag `is_intra_linked`. Pour l’écran Profil complet (bio BetterIntra + objet `intra` imbriqué), passe plutôt par `GET /users/me` documenté dans [Users & profils](./users-profiles).
 
 ```js
-const user = await api("/auth/me");
-// user.email, user.login, user.is_intra_linked, …
+const user = await fetch("http://localhost:8000/auth/me", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 ```
 
-Pour le profil unifié de l’écran Profil → [`GET /users/me`](./users-profiles).
+## Lier Intra 42 — pourquoi et comment
 
-## Lier Intra 42
+Sans ce lien, friends, chat, proxy campus, présence, notifications et analytics répondent **403**. Ce n’est pas une option cosmétique : c’est le passage obligé pour toute feature qui lit 42 ou qui suppose une identité école.
 
-Sans ce lien : friends, chat, proxy, analytics → **403**.
-
-### Flux
-
-1. SPA appelle `GET /auth/42` avec JWT  
-2. API renvoie `authorize_url`  
-3. Redirect navigateur vers Intra  
-4. Intra rappelle `GET /auth/callback?code&state`  
-5. API redirige vers `FRONTEND_URL/?intra=linked` (ou `intra=error`)
+Le flux est un redirect navigateur classique. Déjà authentifié en JWT, tu appelles `GET /auth/42`. L’API construit une URL d’autorisation Intra (avec un `state` signé qui rattache le flow à ton user BI) et te la renvoie. Tu fais `window.location = authorize_url`. L’élève accepte sur Intra ; Intra rappelle alors `GET /auth/callback` sur **notre** API (pas la SPA). Le serveur échange le `code`, stocke les tokens 42 sur le user, et redirige vers `FRONTEND_URL/?intra=linked` (ou `/?intra=error&reason=…` en cas d’échec / refus).
 
 ```js
-const { authorize_url } = await api("/auth/42");
+const { authorize_url } = await fetch("http://localhost:8000/auth/42", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
+
 window.location.href = authorize_url;
 ```
 
 :::warning
-N’appelle **pas** `/auth/callback` depuis la SPA. Le navigateur y arrive depuis 42.
+N’appelle jamais `/auth/callback` toi-même depuis le front. Seul le navigateur, renvoyé par 42, doit y atterrir.
 :::
 
-Après succès :
+Côté serveur il faut `FORTY_TWO_CLIENT_ID`, `FORTY_TWO_CLIENT_SECRET`, un `FORTY_TWO_REDIRECT_URI` qui matche exactement la config de l’app Intra, et `FRONTEND_URL` pour savoir où renvoyer l’utilisateur.
 
-```js
-const me = await api("/auth/me");
-console.log(me.login, me.is_intra_linked); // true
-```
+Après un lien réussi, `GET /auth/me` (ou `/users/me`) montre un `login`, un `forty_two_id`, et `is_intra_linked: true`.
 
-## Recette page Login
-
-1. Form → `api("/auth/login"|"/auth/register", …)`  
-2. Persister les tokens  
-3. Si `!is_intra_linked` → CTA OAuth  
-4. Au boot → `api("/auth/me")` ; refresh sur 401  
-
-## Suite
-
-- [Users & profils](./users-profiles)  
-- [Proxy Intra](./intra-proxy)  
-- [Cookbook front](./frontend-cookbook)  
+Suite logique : [Users & profils](./users-profiles) pour peupler l’UI une fois la session posée, et [Proxy Intra](./intra-proxy) dès que le lien 42 est fait.

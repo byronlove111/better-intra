@@ -1,60 +1,47 @@
 # Analytics logtime
 
-Totaux, jours actifs, weekday — plus exports CSV / PDF via `fetch` + blob.
+Le CDC demande des stats d’heures à l’école et un export PDF/CSV. Le proxy Intra te donne les sessions brutes ; **Analytics** les agrège en totaux, jours actifs, séries par jour / semaine / weekday, prêts pour des cartes KPI et un petit graphique. La plage par défaut couvre les **trente derniers jours** ; tu peux la resserrer avec `begin_at` et `end_at`.
 
-Auth : JWT + Intra lié. Plage défaut : **30 jours**. Helper : [`api()`](./getting-started#helper-api).
+Auth : JWT + Intra lié.
 
-## Stats JSON
+## Lire les stats
 
-```js
-const stats = await api("/analytics/logtime");
-
-const ranged = await api(
-  "/analytics/logtime?begin_at=2026-07-01T00:00:00Z&end_at=2026-08-01T00:00:00Z",
-);
-
-const bars = stats.by_weekday.map((d) => [d.weekday_name, d.duration_hours]);
-```
-
-| Champ | |
-|---|---|
-| `total_hours` / `total_seconds` | Totaux |
-| `active_days` | Jours avec présence |
-| `average_hours_per_active_day` | Moyenne |
-| `days[]` | Par date |
-| `by_weekday[]` | `weekday` 0=lun, `weekday_name`, `duration_hours` |
-| `by_week[]` | Buckets hebdo |
-
-## Exports CSV / PDF
+`GET /analytics/logtime` renvoie notamment `total_hours`, `active_days`, une moyenne par jour actif, le détail `days`, les buckets `by_week`, et `by_weekday` (avec `weekday_name` et `duration_hours`) — idéal pour sept barres lundi→dimanche sans reformater toi-même.
 
 ```js
-async function download(path, filename) {
-  const token = localStorage.getItem("access_token");
-  const res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement("a"), { href: url, download: filename });
-  a.click();
-  URL.revokeObjectURL(url);
-}
+const stats = await fetch("http://localhost:8000/analytics/logtime", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 
-await download("/analytics/logtime/export.csv", "logtime.csv");
-await download("/analytics/logtime/export.pdf", "logtime.pdf");
+const ranged = await fetch(
+  "http://localhost:8000/analytics/logtime?begin_at=2026-07-01T00:00:00Z&end_at=2026-08-01T00:00:00Z",
+  { headers: { Authorization: `Bearer ${access_token}` } },
+).then((r) => r.json());
 ```
 
-Mêmes query `begin_at` / `end_at` optionnels sur les exports.
+## Exporter CSV ou PDF
 
-## Recette page Logtime
+Les routes `/analytics/logtime/export.csv` et `/export.pdf` renvoient un fichier (pas du JSON). Tu récupères un blob, puis tu déclenches le download côté navigateur. Les mêmes query de dates s’appliquent.
 
-1. `api("/analytics/logtime")` → KPIs + barres  
-2. Boutons → `download(…)`  
-3. Date picker → query params  
-4. Sessions brutes : `api("/me/intra/logtime")`  
+```js
+const res = await fetch("http://localhost:8000/analytics/logtime/export.csv", {
+  headers: { Authorization: `Bearer ${access_token}` },
+});
+const blob = await res.blob();
+const url = URL.createObjectURL(blob);
+const a = Object.assign(document.createElement("a"), {
+  href: url,
+  download: "logtime.csv",
+});
+a.click();
+URL.revokeObjectURL(url);
 
-## Suite
+// même pattern pour :
+// http://localhost:8000/analytics/logtime/export.pdf
+```
 
-- [Proxy Intra](./intra-proxy)  
-- [Cookbook front](./frontend-cookbook)  
+Le PDF est déjà mis en page côté serveur (cartes KPI, barres weekday, tableaux) : le front n’a pas à générer le document.
+
+Si tu as besoin du détail session par session, `GET /me/intra/logtime` reste disponible via le [proxy Intra](./intra-proxy), mais ce n’est pas le chemin principal du module Data Major.
+
+Suite : [Proxy Intra](./intra-proxy), [Cookbook front](./frontend-cookbook).

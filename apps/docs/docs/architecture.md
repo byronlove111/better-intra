@@ -1,85 +1,41 @@
 # Architecture
 
-Comment l’API est découpée, où vivent les secrets, et quelle auth chaque surface exige.
+Cette page ne liste pas les routes : elle explique **comment** BetterIntra est découpé, où vivent les secrets, et pourquoi certaines features exigent Intra alors que d’autres se contentent d’un JWT.
 
-## Modèle mental
+## Le modèle mental
 
-```text
-SPA / client
-   │  JWT  (ou X-API-Key pour /api/v1/events)
-   ▼
-FastAPI  apps/server
-   ├── Postgres BetterIntra   ← écritures sociales / orga
-   └── api.intra.42.fr        ← lectures seules (tokens OAuth sur User)
-```
+Le navigateur (ou tout client) parle uniquement à FastAPI. FastAPI écrit dans Postgres BetterIntra pour tout ce qui est « à nous » (profil bio, follows, events BI, chat, notifs, clés API), et lit `api.intra.42.fr` en utilisant les tokens OAuth stockés sur l’utilisateur. Le front ne doit **jamais** appeler Intra directement : les secrets 42 restent côté serveur.
 
-Trois règles non négociables :
+Trois idées à garder en tête. D’abord, un compte email/password et un lien Intra sont deux choses distinctes : tu peux avoir un compte BI sans Intra, mais alors le campus et le social Intra-first sont fermés. Ensuite, le graphe d’amis est Intra-first : tu follow un login 42, qu’il ait ou non un compte BetterIntra ; les champs bio / online n’apparaissent que s’il est aussi lié BI. Enfin, la présence WebSocket n’est pas un annuaire global du campus : elle ne montre que les gens que tu follow et qui sont connectés.
 
-1. Le navigateur **ne parle jamais** à `api.intra.42.fr`.
-2. Compte email/password ≠ lien Intra — les deux coexistent.
-3. Le social est **Intra-first** : follow n’importe quel login 42 ; les champs BI apparaissent si `is_betterintra_linked`.
+## Où se trouve le code
 
-## Packages
+Sous `apps/server/app/`, chaque dossier porte une responsabilité claire. `auth/` gère register, login, refresh et le flux OAuth 42. `users/` construit les profils unifiés. `friends/` matérialise les follows. `intra/` proxifie l’API 42 et maintient le cache `intra_people`. `events/` et `agenda/` fusionnent le calendrier campus avec les events BetterIntra. `api_keys/` émet les clés du Major public API et applique le rate limit. `chat/` plus `realtime/` couvrent les DM et le hub WebSocket. `notifications/` alimente l’inbox et les hooks. `analytics/` agrège le logtime et exporte CSV/PDF.
 
-| Dossier | Responsabilité |
-|---|---|
-| `auth/` | Register, login, refresh, OAuth 42 |
-| `users/` | Profils unifiés |
-| `friends/` | Follows |
-| `intra/` | Proxy 42 + cache `intra_people` |
-| `events/` + `agenda/` | Events BI + feed unifié |
-| `api_keys/` | Clés + rate limit |
-| `chat/` + `realtime/` | DM, blocks, WS |
-| `notifications/` | Inbox + hooks |
-| `analytics/` | Logtime + exports |
+Tu n’as pas besoin de tout ouvrir pour brancher un écran : le cookbook te renvoie vers le guide utile.
 
-## Matrice d’auth
+## Qui a le droit d’appeler quoi
 
-| Surface | Auth requise |
-|---|---|
-| Register / login / refresh, health, callback OAuth | Public |
-| `/auth/me`, `/auth/42`, `/users/me`, api-keys, CRUD `/events` JWT | JWT |
-| `/users/{login}`, friends, proxy Intra, chat, presence, notifs, analytics, `/ws` | JWT **+ Intra lié** |
-| `/api/v1/events*` | `X-API-Key` |
+Les routes publiques, ce sont surtout register/login/refresh, le callback OAuth (le navigateur y arrive depuis 42), et les health checks. Dès que tu touches au compte, aux clés API ou au CRUD events JWT, il faut un Bearer. Dès que tu touches au profil d’un autre login, aux follows, au proxy Intra, au chat, à la présence, aux notifs, aux analytics ou au WebSocket, il faut en plus qu’Intra soit lié — sinon **403**.
 
-`require_intra_linked` → **403** si `forty_two_id` est null.
+L’exception du Major, c’est `/api/v1/events` : pas de JWT, mais un header `X-API-Key` appartenant à un user. La clé ne voit que les events de son propriétaire.
 
-## Flags d’identité (JSON)
+## Les flags que le front doit comprendre
 
-| Champ | Signification |
-|---|---|
-| `is_intra_linked` | Ce compte BI a connecté OAuth 42 |
-| `is_betterintra_linked` | Cette identité Intra a un compte BI |
-| `login` / `forty_two_id` | Identité 42 |
-| `is_online` | WS actif (BI only ; `null` si Intra-only) |
+Dans les JSON, `is_intra_linked` dit si **ce** compte BetterIntra a connecté OAuth. `is_betterintra_linked` apparaît sur les profils / cartes d’amis et dit si **cette** identité Intra a aussi un compte chez nous (donc bio, DM, online possibles). `login` et `forty_two_id` sont l’identité école. `is_online` n’a de sens que pour un compte BI : `true`/`false` s’il peut avoir un WS, `null` s’il est Intra-only.
+
+Mal lire ces flags, c’est afficher un bouton Message à quelqu’un qui ne peut pas recevoir de DM, ou cacher une bio qui existe.
 
 ## Temps réel
 
-Hub in-memory mono-processus (`realtime/ws_manager.py`) :
-
-- `ws://host/ws?token=<access_jwt>` (Intra requis)
-- Events : `presence.*`, `message.created`, `conversation.read`, `notification.created`
-- Présence **scopée aux follows** (pas globale)
-
-:::note Scale
-Multi-worker / multi-host → Redis plus tard. Hors scope MVP sujet.
-:::
+Le hub WebSocket vit en mémoire dans un seul process (`realtime/ws_manager.py`). Tu te connectes avec `ws://localhost:8000/ws?token=<access_jwt>` (Intra obligatoire ; en prod `wss://…`). Tu reçois la présence scopée aux follows, les nouveaux messages, les read receipts et les notifications. Ce n’est pas encore multi-worker : pour scaler plus tard il faudrait Redis. Pour le sujet, un process suffit.
 
 ## Secrets
 
-| Secret | Stockage |
-|---|---|
-| Password user | Argon2id (`password_hash`) — jamais en clair |
-| Clé API | SHA-256 ; brute renvoyée **une fois** à la création |
-| Tokens 42 | En BDD pour appeler Intra côté serveur |
+Les passwords users sont Argon2id dans `password_hash`. Les clés API sont hashées SHA-256 ; la valeur brute n’est renvoyée qu’à la création. Les tokens 42 access/refresh sont stockés pour que le backend puisse appeler Intra — c’est normal et nécessaire, ce n’est pas le password utilisateur.
 
-## Docs produit
+## Docs produit autour
 
-- [Cahier des charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md)
-- [Déploiement](https://github.com/byronlove111/better-intra/blob/main/docs/deploiement.md) · [DevOps](https://github.com/byronlove111/better-intra/blob/main/docs/devops.md)
+Le [cahier des charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md) fixe le scope 18 pts. Le déploiement et le brief DevOps sont dans `docs/deploiement.md` et `docs/devops.md`.
 
-## Suite
-
-- [Premiers pas](./getting-started)  
-- [Authentification](./auth)  
-- [Cookbook front](./frontend-cookbook)  
+Ensuite : [Premiers pas](./getting-started) si tu n’as pas encore de token, [Authentification](./auth) pour OAuth, [Cookbook front](./frontend-cookbook) pour l’intégration écran par écran.

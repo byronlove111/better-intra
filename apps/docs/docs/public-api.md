@@ -1,101 +1,77 @@
 # API publique
 
-CRUD events BetterIntra avec **clé API** (`X-API-Key`) — Major Web public API.
+Le Major « Web public API » du sujet demande une ressource exposée hors du front JWT, avec clé API, rate limit et doc OpenAPI. Chez BetterIntra, cette ressource ce sont les **events stockés chez nous** — pas une écriture sur Intra. Tu génères une clé en étant connecté (JWT), puis tu appelles `/api/v1/events` avec `X-API-Key`.
 
-La gestion des clés se fait en JWT ; les appels `/api/v1/events` utilisent la clé brute.
+## Pourquoi une clé API
 
-Helper JWT : [`api()`](./getting-started#helper-api).
-
-## Clés (JWT)
+Une clé permet à un script, un bot ou une intégration d’agir **au nom d’un user** sans embarquer son password ni son refresh JWT. Elle est hashée SHA-256 en base ; la valeur brute n’est renvoyée **qu’à la création**. Ensuite la liste ne montre qu’un `prefix` pour reconnaître la clé. Un rate limit par clé et par minute (défaut 60) protège l’API des boucles folles.
 
 ```js
-const created = await api("/api-keys", {
+const created = await fetch("http://localhost:8000/api-keys", {
   method: "POST",
-  body: { name: "ci-bot" },
+  headers: {
+    Authorization: `Bearer ${access_token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ name: "ci-bot" }),
+}).then((r) => r.json());
+// created.key n’apparaît qu’ici — à copier tout de suite
+
+const keys = await fetch("http://localhost:8000/api-keys", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
+
+await fetch(`http://localhost:8000/api-keys/${created.id}`, {
+  method: "DELETE",
+  headers: { Authorization: `Bearer ${access_token}` },
 });
-// created.key → À COPIER MAINTENANT (une seule fois)
-// created.prefix → visible ensuite dans la liste
-
-localStorage.setItem("api_key", created.key); // démo only — préfère un secret store
-
-const keys = await api("/api-keys");
-await api(`/api-keys/${created.id}`, { method: "DELETE" });
 ```
 
-:::danger Une seule fois
-Le champ `key` (brut) n’apparaît qu’à la création. Ensuite tu ne vois que le `prefix`.
-:::
+## Appeler `/api/v1/events`
 
-- Stockage serveur : hash SHA-256  
-- Rate limit : par clé / minute (défaut 60)
-
-## Events `/api/v1/events`
+Ici pas de Bearer. Tu poses `X-API-Key` avec la clé brute. Les cinq opérations du Major sont list, create, get, put (remplacement), delete — toutes scopées aux events du propriétaire de la clé.
 
 ```js
-const API = import.meta.env.VITE_API_URL;
-const apiKey = localStorage.getItem("api_key"); // ou saisie utilisateur
+const list = await fetch("http://localhost:8000/api/v1/events?limit=20", {
+  headers: { "X-API-Key": apiKey },
+}).then((r) => r.json());
 
-async function publicApi(path, { method = "GET", body } = {}) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": apiKey,
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  if (res.status === 204) return null;
-  return res.json();
-}
-```
-
-### List / create
-
-```js
-const list = await publicApi("/api/v1/events?limit=20");
-
-const event = await publicApi("/api/v1/events", {
+const event = await fetch("http://localhost:8000/api/v1/events", {
   method: "POST",
-  body: {
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+  },
+  body: JSON.stringify({
     title: "Public API event",
     description: "from script",
     location: "Lab",
     begin_at: "2026-08-12T10:00:00Z",
     end_at: "2026-08-12T11:00:00Z",
-  },
-});
-```
+  }),
+}).then((r) => r.json());
 
-### Get / put / delete
-
-```js
-const one = await publicApi(`/api/v1/events/${event.id}`);
-
-await publicApi(`/api/v1/events/${event.id}`, {
+await fetch(`http://localhost:8000/api/v1/events/${event.id}`, {
   method: "PUT",
-  body: {
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+  },
+  body: JSON.stringify({
     title: "Updated",
     description: null,
     location: "Lab",
     begin_at: "2026-08-12T10:00:00Z",
     end_at: "2026-08-12T12:00:00Z",
-  },
+  }),
 });
 
-await publicApi(`/api/v1/events/${event.id}`, { method: "DELETE" });
+await fetch(`http://localhost:8000/api/v1/events/${event.id}`, {
+  method: "DELETE",
+  headers: { "X-API-Key": apiKey },
+});
 ```
 
-Scopé au propriétaire de la clé. Les **5** endpoints + OpenAPI + rate limit = exigences du sujet.
+OpenAPI sur `/docs` (tag public-api) compte comme la documentation machine exigée par le Major. Le feed front unifié (Intra + BI) reste sur [Events JWT](./events) — ce n’est pas le même use case.
 
-## Recette settings front
-
-1. Lister clés (`api("/api-keys")`)  
-2. Créer → modal « copie maintenant »  
-3. Révoquer → `DELETE`  
-4. Lien Swagger tag `public-api`  
-
-## Suite
-
-- [Events JWT](./events)  
-- [Architecture](./architecture)  
+Suite : [Events](./events) pour l’Agenda SPA, [Architecture](./architecture) pour la place de cette surface dans la matrice d’auth.

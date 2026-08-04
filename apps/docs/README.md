@@ -1,17 +1,20 @@
 # `apps/docs` — Docusaurus (self-hosté)
 
-Documentation développeur de l’API BetterIntra.
+Documentation développeur de l’API BetterIntra (auth, Intra, events, chat, analytics…).
 
 ## Lancer
 
 ```bash
 cd apps/docs
 pnpm install
-pnpm start
-# ou : pnpm exec docusaurus start --port 3001
+pnpm exec docusaurus start --port 3001
 ```
 
-→ http://localhost:3000 (défaut)
+→ http://localhost:3001
+
+(`pnpm start` seul = port **3000**, souvent déjà pris par le front.)
+
+Swagger (contrat machine) : API allumée → http://localhost:8000/docs
 
 ## Build static
 

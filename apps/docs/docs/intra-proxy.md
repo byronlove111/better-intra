@@ -1,68 +1,57 @@
 # Proxy Intra
 
-Lis les data école **sans** appeler `api.intra.42.fr` depuis le navigateur. Auth : JWT + Intra lié. Lecture seule.
+Le proxy Intra existe pour une raison simple : le navigateur ne doit jamais parler à `api.intra.42.fr`. Toutes les lectures école passent par notre backend, qui utilise les tokens OAuth stockés sur l’utilisateur. C’est de la **lecture seule** — BetterIntra n’écrit rien sur Intra (pas de subscribe projet, pas de vrais slots, etc.).
 
-Helper : [`api()`](./getting-started#helper-api).
+Auth : JWT + Intra lié.
 
-## Moi
+## Ce que « mes » routes exposent
 
-```js
-const profile = await api("/me/intra");
-const projects = await api("/me/intra/projects");
-const evaluations = await api("/me/intra/evaluations");
-const logtime = await api("/me/intra/logtime");
-const campusEvents = await api("/me/intra/events");
+`GET /me/intra` te donne le profil école normalisé : login, displayname, wallet, points de correction, campus, cursus avec niveau et grade. C’est la source idéale des KPIs dashboard (niveau, wallet).
 
-const level = profile.cursus?.[0]?.level;
-```
+`GET /me/intra/projects` et `GET /me/intra/evaluations` renvoient des pages `{ items, meta }` pour peupler les écrans Projets et Évaluations : noms de projets, statuts, notes, rôle correcteur/corrigé, etc.
 
-### Champs utiles
+`GET /me/intra/logtime` expose les sessions de location brutes. Pour des totaux, des graphiques weekday et surtout l’export PDF/CSV du CDC, tu passeras plutôt par [Analytics](./analytics), qui agrège ces sessions.
 
-- Profil : `login`, `displayname`, `wallet`, `correction_point`, `campus[]`, `cursus[]`
-- Projets (`items`) : `project_name`, `status`, `final_mark`, `validated`, `marked_at`
-- Évals (`items`) : `role` (`corrector` \| `corrected`), `project_name`, `corrector_login`, `begin_at`
-
-### Logtime & events bruts
-
-- Sessions : `api("/me/intra/logtime")`  
-- Stats + PDF/CSV → [Analytics](./analytics)  
-- Agenda produit → [Events unifiés](./events) plutôt que `/me/intra/events`
-
-## Recherche users
+`GET /me/intra/events` liste les events campus Intra bruts. Pour l’Agenda produit (Intra + BetterIntra dans un seul feed, avec recherche), utilise [Events](./events) (`GET /events`) plutôt que cette route seule.
 
 ```js
-const page = await api(`/intra/users?q=${encodeURIComponent(q)}&page=1&page_size=20`);
-// page.items → naviguer vers api(`/users/${login}`)
+const profile = await fetch("http://localhost:8000/me/intra", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 
-const exact = await api(`/intra/users?q=${encodeURIComponent(login)}&exact=true`);
+const projects = await fetch("http://localhost:8000/me/intra/projects", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
+
+const evaluations = await fetch("http://localhost:8000/me/intra/evaluations", {
+  headers: { Authorization: `Bearer ${access_token}` },
+}).then((r) => r.json());
 ```
 
-## Autre élève
+## Chercher un élève
+
+`GET /intra/users?q=` fait une recherche partielle sur les logins (paramètre Intra `search[login]`). Avec `exact=true`, tu forces une égalité stricte. Une fois le login choisi, `GET /users/{login}` donne le profil produit (bio, flags BI), pas seulement la fiche Intra.
 
 ```js
-const other = await api(`/intra/users/${login}`);
-const otherProjects = await api(`/intra/users/${login}/projects`);
-const otherEvals = await api(`/intra/users/${login}/evaluations`);
-const otherLogtime = await api(`/intra/users/${login}/logtime`);
+const page = await fetch(
+  `http://localhost:8000/intra/users?q=${encodeURIComponent(q)}&page=1&page_size=20`,
+  { headers: { Authorization: `Bearer ${access_token}` } },
+).then((r) => r.json());
 ```
 
-:::tip Profil produit
-Bio, flags BI, online → [`GET /users/{login}`](./users-profiles).
-:::
+## Regarder un autre élève côté Intra
 
-## Recette pages
+Les routes `/intra/users/{login}`, `/projects`, `/evaluations`, `/logtime` proxifient la fiche d’un autre. Elles sont utiles pour une vue « raw Intra » ; pour le produit unifié (permission gate `is_betterintra_linked`, bio, online), reste sur [Users & profils](./users-profiles).
 
-| Page | Appels |
-|---|---|
-| Dashboard KPIs | `api("/me/intra")` (+ events, notifs) |
-| Projets | `api("/me/intra/projects")` |
-| Évaluations | `api("/me/intra/evaluations")` |
-| Search | `api("/intra/users?q=…")` |
+```js
+const otherProjects = await fetch(
+  `http://localhost:8000/intra/users/${login}/projects`,
+  { headers: { Authorization: `Bearer ${access_token}` } },
+).then((r) => r.json());
+```
 
-Gère **403** (CTA Intra) et les 502 / rate-limit 42 comme retryables.
+## Erreurs à prévoir
 
-## Suite
+Un **403** signifie presque toujours « pas encore lié Intra » → CTA vers le flux OAuth. Les 502 / timeouts / rate limits 42 sont retryables : le proxy dépend d’un service externe.
 
-- [Events](./events)  
-- [Analytics](./analytics)  
-- [Users & profils](./users-profiles)  
+Suite : [Events](./events) pour l’agenda unifié, [Analytics](./analytics) pour le logtime produit, [Users & profils](./users-profiles) pour les fiches.
