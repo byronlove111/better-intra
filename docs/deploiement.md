@@ -37,7 +37,7 @@ make up
 | Service | Rôle | URL / port |
 |---|---|---|
 | `proxy` (nginx) | HTTPS, point d'entrée navigateur | https://localhost:8443 |
-| `backend` (FastAPI) | API | https://localhost:8443/... (via le proxy) · aussi exposé en direct sur http://localhost:8000 pour du debug |
+| `backend` (FastAPI) | API | https://localhost:8443/... (via le proxy) · aussi sur http://127.0.0.1:8000 pour du debug, **depuis ta machine uniquement** |
 | `db` (Postgres 16) | Base de données | interne au réseau Docker uniquement (pas de port publié) |
 
 Ports 8080/8443 (pas 80/443) : `proxy` publie sur des ports non-privilégiés pour rester portable sur toutes les machines de l'équipe — le rootless Podman (sans root) ne peut pas bind un port < 1024, alors que Docker et Podman machine/Desktop n'ont pas cette contrainte. Sur `http://localhost:8080`, nginx répond par une redirection 301 vers `https://localhost:8443`.
@@ -49,9 +49,37 @@ Concrètement :
 | https://localhost:8443/health | API vivante (via HTTPS) |
 | https://localhost:8443/health/db | API + Postgres OK (via HTTPS) |
 | https://localhost:8443/docs | Swagger |
-| http://localhost:8000/docs | Même Swagger, en direct, sans passer par le proxy (pratique pour du `curl` rapide) |
+| https://localhost:8443/nginx-health | Le proxy répond (sonde interne, ne touche pas au backend) |
+| http://127.0.0.1:8000/docs | Même Swagger, en direct, sans passer par le proxy (pratique pour du `curl` rapide) |
 
-**Règle du sujet :** le navigateur (et donc le futur front de Swan) ne doit **jamais** appeler `http://localhost:8000` directement — toujours passer par `https://localhost:8443` (le proxy). Le port 8000 en clair n'est là que pour le confort de debug côté terminal.
+**Règle du sujet :** le navigateur (et donc le futur front de Swan) ne doit **jamais** appeler `http://127.0.0.1:8000` directement — toujours passer par `https://localhost:8443` (le proxy). Le port 8000 en clair n'est là que pour le confort de debug côté terminal ; il est publié sur `127.0.0.1` seulement, donc injoignable depuis le réseau (une autre machine du LAN ne peut pas l'atteindre).
+
+## Ordre de démarrage et healthchecks
+
+Chaque service déclare une sonde, et `depends_on: condition: service_healthy` s'en sert pour **séquencer** le boot — c'est ce qui empêche l'API d'ouvrir son pool de connexions pendant que Postgres est encore en train de s'initialiser.
+
+| Service | Sonde | Ce qu'elle prouve |
+|---|---|---|
+| `db` | `pg_isready -U … -d …` | Postgres accepte les connexions (pas juste « le process tourne ») |
+| `backend` | `urllib` sur `/health` | L'API répond en HTTP |
+| `proxy` | `wget http://127.0.0.1/nginx-health` | nginx sert ; comme il refuse de démarrer sans certificat lisible, un proxy qui répond est un proxy dont le TLS est chargé |
+
+Au premier `make up` sur un volume vide, la séquence est donc : `db` démarre → *Waiting* → *Healthy* → `backend` démarre → *Waiting* → *Healthy* → `proxy` démarre. Compter ~25 s à froid (l'`initdb` de Postgres domine) ; les démarrages suivants sont bien plus rapides.
+
+```bash
+make ps   # colonne STATUS : "Up X (healthy)" pour les trois services
+```
+
+Deux détails utiles :
+
+- `make up` rend la main dès que `proxy` est *Started*, pas *Healthy* — un `curl` lancé dans la seconde qui suit peut encore échouer en erreur TLS. Laisse-lui une poignée de secondes.
+- La sonde du `backend` tape `/health` et non `/health/db` : la disponibilité de Postgres est déjà garantie par le `depends_on`, et on ne veut pas qu'un hoquet de la base fasse passer l'API en `unhealthy` alors qu'elle répond très bien.
+
+### Limite connue : les sondes ne prouvent pas que la stack est utilisable
+
+Une sonde mesure qu'un process **répond**, pas qu'il est **capable de servir**. Aujourd'hui les trois passent au vert sur une base vide : `pg_isready` réussit sans aucune table, et `/health/db` ne fait qu'un `SELECT 1`. Comme aucune migration n'est appliquée dans le chemin Docker (voir « Ce qui n'est pas encore fait »), une stack entièrement *healthy* peut renvoyer 500 sur tous les endpoints métier.
+
+`depends_on: service_healthy` garantit donc un **ordre de démarrage**, pas une stack fonctionnelle. C'est le chantier suivant.
 
 ## HTTPS en local
 
@@ -124,13 +152,16 @@ Rien n'oblige à passer par Compose : Postgres via Homebrew + `uv run uvicorn --
 | `port is already allocated` sur 8080/8443/8000 | Un autre service tourne déjà sur ces ports (ex. un ancien `uvicorn` local sur 8000) | `make down` ailleurs, stopper le process local, ou changer le port publié dans `compose.yml` |
 | `rootlessport cannot expose privileged port` (Podman) | Podman rootless (sans root) ne peut pas bind un port < 1024 — mais `proxy` publie déjà sur 8080/8443, donc ça ne devrait pas arriver avec la conf actuelle | Vérifie que `compose.yml` publie bien `8080:80` / `8443:443` et pas `80:80` / `443:443` |
 | `Connection is not private` dans Chrome | Certificat self-signed (normal, voir plus haut) | `Avancé` → `Continuer vers localhost:8443` |
-| L'API renvoie une erreur DB au démarrage | `backend` a démarré avant que `db` soit prêt à accepter des connexions | Réessaie / `make restart` ; un vrai healthcheck Compose est prévu en amélioration |
+| L'API renvoie une erreur DB au démarrage | Ne devrait plus arriver : `backend` attend que `db` soit *healthy* | Si ça se produit quand même, `make ps` pour voir quel service est `unhealthy`, puis `make logs` |
+| Une modif de `infra/nginx/nginx.conf` n'a aucun effet | `make restart` (ou `nginx -s reload`) ne suffit pas : le fichier est monté en bind mount **fichier**, attaché à son inode d'origine. La plupart des éditeurs écrivent un nouveau fichier puis le renomment → nouvel inode, et le container continue de servir l'ancien contenu | `make down && make up` (recrée les containers, donc remonte le fichier). Pour vérifier ce que voit vraiment nginx : `docker compose exec proxy cat /etc/nginx/conf.d/default.conf` |
+| `proxy` reste `unhealthy` alors que le site répond | La sonde `/nginx-health` ne renvoie pas 200 | `docker compose exec proxy wget -qO- http://127.0.0.1/nginx-health` doit afficher `ok`. Attention : un `return` placé directement dans un bloc `server` s'exécute avant la sélection des `location` et court-circuiterait la sonde |
 | CORS bloqué côté front | `CORS_ORIGINS` ne contient pas l'origine exacte du front | Ajouter l'origine dans `.env` (`CORS_ORIGINS`), redémarrer l'API |
 
 ## Ce qui n'est pas encore fait (prochaines étapes DevOps)
 
+- **Migrations Alembic — le build Docker est en retard sur `apps/server`.** `alembic upgrade head` n'est lancé nulle part dans le chemin Docker : ni l'`ENTRYPOINT`, ni `compose.yml`, ni le `Makefile`. Sur un volume vide, `make up` donne donc une base **sans aucune table**, et les endpoints métier renvoient 500. `alembic/` et `alembic.ini` ne sont même pas copiés dans l'image. Prochaine étape : les copier, puis appliquer les migrations via un service `migrate` one-shot (`depends_on: db: service_healthy`, et `backend` qui attend son `service_completed_successfully`).
+- **Rationaliser les secrets qui traînent dans `.env`.** `db` ne reçoit plus que ses trois variables, mais `backend` reçoit toujours tout le fichier (`JWT_SECRET`, `FORTY_TWO_CLIENT_SECRET`). Les secrets Compose (`secrets:` + convention `_FILE`) seraient plus propres, mais demandent que `app/config.py` sache lire une valeur depuis un fichier — à arbitrer avec Malik.
 - Service `web` dans `compose.yml` dès que Swan a un front buildable (Dockerfile + build servi par `proxy`).
-- Healthchecks Compose (`db` → `pg_isready`, `backend` → `/health`) + `depends_on: condition: service_healthy`.
 - Seed / données de démo, éventuelle machine de démo déjà chaude.
 - Endpoints WebSocket (chat, notifs, online) : le `proxy` est déjà prêt à les faire passer (upgrade HTTP→WS géré dans `infra/nginx/nginx.conf`, forcément en `wss://` côté navigateur puisque tout passe par HTTPS) — mais rien n'existe encore côté `apps/server/app/` ni côté front. À coder quand le module WS du CDC démarre.
 - Bonus monitoring (Prometheus + Grafana) si le sujet le permet/le temps le permet : pas encore de service dans `compose.yml`, à évaluer une fois le socle (web + WS + healthchecks) posé.
@@ -141,7 +172,7 @@ Suivi détaillé de ces points : [`docs/devops.md`](devops.md).
 
 La machine reste `localhost` (pas de vrai domaine/prod à prévoir), mais côté correction : soit `nginx` (`proxy`) reste le **seul** point d'entrée accessible depuis l'extérieur de la machine, soit tout autre point d'entrée qui subsiste doit lui aussi parler HTTPS — jamais de port en clair exposé. Ce qui suit est acceptable pour bosser au quotidien mais casse cette règle si c'est encore là le jour J :
 
-- **Port 8000 du `backend` publié directement sur l'hôte, en clair** (`compose.yml`, `ports: "8000:8000"`) : pratique pour `curl`/Swagger en dev, mais c'est un deuxième point d'entrée non chiffré. **Avant la correction : soit le retirer** (ou le restreindre derrière un profile Compose type `debug` qu'on n'active pas ce jour-là), **soit le faire passer en HTTPS** si on veut le garder exposé.
+- **Port 8000 du `backend` publié en clair sur la loopback** (`compose.yml`, `ports: "127.0.0.1:8000:8000"`) : le bind sur `127.0.0.1` le rend injoignable depuis le réseau — ce n'est donc plus un point d'entrée exposé, seulement un raccourci local pour `curl`/Swagger. Reste que ça demeure du HTTP en clair : **avant la correction, le plus propre est de le retirer** (ou de le passer derrière un profile Compose type `debug` qu'on n'active pas ce jour-là), pour n'avoir qu'un seul chemin, celui du proxy.
 - **`FORTY_TWO_REDIRECT_URI=http://localhost:8000/auth/callback`** (`.env.example`) : pointe par défaut sur le port backend en clair, pas sur le proxy HTTPS (`8443`). À corriger en `https://localhost:8443/auth/callback` dès que l'auth 42 est branchée — sinon l'échange du code OAuth transite par le point d'entrée non chiffré du point précédent.
 - **CORS large** : `allow_methods=["*"]` / `allow_headers=["*"]` avec `allow_credentials=True` dans `apps/server/app/main.py`. Sans vrai risque tant que tous les points d'entrée exposés sont en HTTPS, mais à resserrer si le port 8000 reste accessible en clair.
 
