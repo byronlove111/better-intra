@@ -17,6 +17,8 @@ class FriendOut(BaseModel):
     # Present when the person has a BetterIntra account
     betterintra_user_id: int | None = None
     bio: str | None = None
+    # WS presence when BetterIntra-linked; null for Intra-only
+    is_online: bool | None = None
 
 
 class FollowListOut(BaseModel):

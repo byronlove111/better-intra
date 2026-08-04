@@ -15,6 +15,7 @@ from app.chat.chat_schemas import (
 )
 from app.chat.conversation_model import Conversation
 from app.chat.message_model import Message
+from app.friends import friend_repository
 from app.realtime.ws_manager import ws_manager
 from app.users import user_repository
 from app.users.user_model import User
@@ -245,7 +246,9 @@ def list_blocks(db: Session, *, me: User) -> list[BlockOut]:
     return out
 
 
-def presence_snapshot() -> PresenceOut:
+def presence_snapshot(db: Session, *, user: User) -> PresenceOut:
+    """Online BetterIntra users among people the caller follows."""
+    following_ids = friend_repository.list_following_user_ids(db, follower_id=user.id)
     return PresenceOut(
         online=[
             PeerOut(
@@ -255,6 +258,6 @@ def presence_snapshot() -> PresenceOut:
                 avatar_url=p.avatar_url,
                 is_online=True,
             )
-            for p in ws_manager.online_users()
+            for p in ws_manager.online_among(following_ids)
         ]
     )
