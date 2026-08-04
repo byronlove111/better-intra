@@ -8,6 +8,8 @@ A modern Intra-inspired dashboard for 42. Sign in with 42, read school data (42 
 
 Product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 
+**API integration guides (devs):** [`docs/dev/`](docs/dev/README.md) — auth, Intra proxy, events, chat/WS, cookbook front.
+
 ## Ownership
 
 | Who | Owns |
@@ -67,7 +69,8 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | Health | http://localhost:8000/health |
 | DB health | http://localhost:8000/health/db |
 
-Front: [`apps/web/README.md`](apps/web/README.md).
+Front: [`apps/web/README.md`](apps/web/README.md).  
+Dev API docs: [`docs/dev/`](docs/dev/README.md).
 
 ## Environment
 
