@@ -28,7 +28,7 @@ make up
 
 `make up` fait deux choses :
 1. génère un certificat HTTPS self-signed pour `localhost` s'il n'existe pas encore (`make certs`, voir plus bas) ;
-2. build et lance trois containers : `db` (Postgres), `backend` (API FastAPI) et `proxy` (nginx, HTTPS).
+2. build et lance quatre containers : `db` (Postgres), `migrate` (migrations Alembic, puis sort), `backend` (API FastAPI) et `proxy` (nginx, HTTPS).
 
 `Ctrl+C` arrête les logs mais laisse les containers tourner en fond selon ton shell ; utilise `make down` pour vraiment tout stopper.
 
@@ -38,6 +38,7 @@ make up
 |---|---|---|
 | `proxy` (nginx) | HTTPS, point d'entrée navigateur | https://localhost:8443 |
 | `backend` (FastAPI) | API | https://localhost:8443/... (via le proxy) · aussi sur http://127.0.0.1:8000 pour du debug, **depuis ta machine uniquement** |
+| `migrate` (one-shot) | Applique les migrations Alembic, puis sort | pas de port — voir « Migrations » |
 | `db` (Postgres 16) | Base de données | interne au réseau Docker uniquement (pas de port publié) |
 
 Ports 8080/8443 (pas 80/443) : `proxy` publie sur des ports non-privilégiés pour rester portable sur toutes les machines de l'équipe — le rootless Podman (sans root) ne peut pas bind un port < 1024, alors que Docker et Podman machine/Desktop n'ont pas cette contrainte. Sur `http://localhost:8080`, nginx répond par une redirection 301 vers `https://localhost:8443`.
@@ -61,25 +62,36 @@ Chaque service déclare une sonde, et `depends_on: condition: service_healthy` s
 | Service | Sonde | Ce qu'elle prouve |
 |---|---|---|
 | `db` | `pg_isready -U … -d …` | Postgres accepte les connexions (pas juste « le process tourne ») |
+| `migrate` | *(aucune)* — one-shot, c'est son **code de sortie** qui compte | Le schéma est à jour : `backend` attend son `service_completed_successfully` |
 | `backend` | `urllib` sur `/health` | L'API répond en HTTP |
 | `proxy` | `wget http://127.0.0.1/nginx-health` | nginx sert ; comme il refuse de démarrer sans certificat lisible, un proxy qui répond est un proxy dont le TLS est chargé |
 
-Au premier `make up` sur un volume vide, la séquence est donc : `db` démarre → *Waiting* → *Healthy* → `backend` démarre → *Waiting* → *Healthy* → `proxy` démarre. Compter ~25 s à froid (l'`initdb` de Postgres domine) ; les démarrages suivants sont bien plus rapides.
+Au premier `make up` sur un volume vide, la séquence est donc : `db` démarre → *Waiting* → *Healthy* → `migrate` démarre → *Exited (0)* → `backend` démarre → *Waiting* → *Healthy* → `proxy` démarre. Compter ~50 s à froid (l'`initdb` de Postgres domine, les 7 migrations ajoutent quelques secondes) ; les démarrages suivants sont bien plus rapides.
 
 ```bash
-make ps   # colonne STATUS : "Up X (healthy)" pour les trois services
+make ps   # colonne STATUS : "Up X (healthy)" pour db/backend/proxy, "Exited (0)" pour migrate
 ```
 
-Deux détails utiles :
+`healthy` dit que l'image est buildée et que le container démarre et répond. Pas que le service est utilisable : la vérification fonctionnelle est le rôle des tests (CI), pas des sondes.
 
-- `make up` rend la main dès que `proxy` est *Started*, pas *Healthy* — un `curl` lancé dans la seconde qui suit peut encore échouer en erreur TLS. Laisse-lui une poignée de secondes.
-- La sonde du `backend` tape `/health` et non `/health/db` : la disponibilité de Postgres est déjà garantie par le `depends_on`, et on ne veut pas qu'un hoquet de la base fasse passer l'API en `unhealthy` alors qu'elle répond très bien.
+`make up` rend la main dès que `proxy` est *Started*, pas *Healthy* — un `curl` lancé dans la seconde qui suit peut encore échouer en erreur TLS.
 
-### Limite connue : les sondes ne prouvent pas que la stack est utilisable
+## Migrations
 
-Une sonde mesure qu'un process **répond**, pas qu'il est **capable de servir**. Aujourd'hui les trois passent au vert sur une base vide : `pg_isready` réussit sans aucune table, et `/health/db` ne fait qu'un `SELECT 1`. Comme aucune migration n'est appliquée dans le chemin Docker (voir « Ce qui n'est pas encore fait »), une stack entièrement *healthy* peut renvoyer 500 sur tous les endpoints métier.
+Le schéma est créé et mis à jour par le service `migrate` : un one-shot qui joue `alembic upgrade head` sur la même image que `backend`, puis sort.
 
-`depends_on: service_healthy` garantit donc un **ordre de démarrage**, pas une stack fonctionnelle. C'est le chantier suivant.
+```yaml
+migrate:  depends_on: db (service_healthy)          # attend Postgres
+backend:  depends_on: migrate (service_completed_successfully)   # attend le schéma
+```
+
+Il tourne à **chaque** `make up`, et c'est voulu : Alembic lit la table `alembic_version` de la base et ne joue que les révisions postérieures. Sur une base déjà à jour, c'est un no-op de deux secondes ; sur un volume neuf, il crée les 11 tables ; si Malik ajoute une migration, seule la nouvelle est jouée.
+
+Un point à connaître :
+
+- **Une base créée hors Alembic échoue.** Si des tables ont été créées à la main ou par `Base.metadata.create_all()`, il n'y a pas de `alembic_version`, Alembic croit repartir de zéro et bute sur `relation "users" already exists`. Rattrapage : `alembic stamp head`, qui enregistre la révision courante sans rien jouer. À garder en tête si on importe un dump : il doit contenir `alembic_version`.
+
+Le contenu des migrations (les `revision --autogenerate`) reste écrit côté `apps/server` par le owner de l'API ; le compose ne fait que les appliquer dans le chemin de déploiement.
 
 ## HTTPS en local
 
@@ -104,13 +116,21 @@ rm -rf infra/nginx/certs && make certs
 
 ## Bind mount / hot-reload
 
-Le code de l'API (`apps/server/app`) est monté en live dans le container `backend` (bind mount), avec `uvicorn --reload`. Concrètement :
+Le code de l'API (`apps/server/app`) est monté en live dans le container `backend` (bind mount), avec `uvicorn --reload`.
 
-- Tu modifies un fichier dans `apps/server/app/` → l'API redémarre toute seule, **pas besoin de rebuild**.
-- Si tu ajoutes une **dépendance** (`pyproject.toml` / `uv.lock` change) → il faut rebuild l'image :
-  ```bash
-  make up   # relance "up --build", refait le build si le Dockerfile/deps ont changé
-  ```
+Le hot reload demande **deux** conditions : le fichier est dans un dossier monté, et c'est un `.py`. Le watcher est restreint à `/app/app` (`--reload-dir`), donc seul le code que l'API exécute la fait redémarrer.
+
+| Ce que tu modifies | Effet | Commande |
+|---|---|---|
+| `.py` dans `apps/server/app/` | uvicorn relance le process serveur (~1 s) | **aucune** |
+| autre fichier dans `app/` (`.json`, template…) | visible dans le container, mais le watcher ne suit que `*.py` | `docker compose restart backend` |
+| `.py` dans `apps/server/alembic/` | aucun effet tant que `migrate` n'a pas tourné (l'API n'importe pas Alembic) | `make up` |
+| `pyproject.toml` / `uv.lock` | le `.venv` vit dans l'image, pas sur l'hôte | `make up` (rebuild) |
+| `alembic.ini`, `Dockerfile`, `.dockerignore` | non montés — ils n'existent que dans l'image | `make up` (rebuild) |
+| `.env`, `compose.yml` | env et config sont figés à la **création** du container | `make up` (recrée) |
+| `infra/nginx/nginx.conf` | bind mount de *fichier* : l'éditeur écrit un nouvel inode | `make down && make up` |
+
+`make up` fait `up --build`, donc il couvre toutes les lignes ci-dessus sauf la dernière. En pratique : le dev code dans `app/` sans rien taper, et relance `make up` dans tous les autres cas.
 
 Les données Postgres, elles, vivent dans un volume Docker nommé (`db_data`) — pas un bind mount — donc rien à perdre si tu changes de dossier ou d'OS.
 
@@ -126,13 +146,15 @@ Le `.env` à la racine (copié depuis `.env.example`, jamais committé) est lu a
 | `VITE_API_URL` | URL que le futur front (Swan) doit appeler — `https://localhost:8443`, jamais l'API en clair |
 | `FORTY_TWO_*` | OAuth 42 — à remplir toi-même dans ton `.env` local, jamais en clair dans git |
 
-`apps/server/.env.example` documente les mêmes variables côté API si tu veux lancer l'API sans Docker (voir README racine).
+`apps/server/.env.example` documente les mêmes variables côté API si tu veux lancer l'API sans Docker (voir README racine). Les deux fichiers doivent donc rester alignés : en Docker, `apps/server/.env` n'existe pas (exclu par le `.dockerignore`), l'API ne voit que ce que Compose injecte depuis la racine.
+
+**À centraliser** — deux fichiers à tenir à la main, c'est une variable oubliée qui retombe silencieusement sur le défaut de `config.py`. Pistes : une règle `make` qui génère les `.env` des services depuis celui de la racine, et les secrets Compose (`secrets:` + convention `_FILE`) pour sortir `JWT_SECRET` et `FORTY_TWO_CLIENT_SECRET` du fichier d'environnement. Objectif : une seule source de vérité, et chaque dev garde la vue sur son scope.
 
 ## Commandes disponibles (`make help`)
 
 ```bash
 make help      # affiche cette liste (c'est aussi la commande par défaut : `make` tout court)
-make up        # génère le certif si besoin, build + lance db/backend/proxy
+make up        # génère le certif si besoin, build + lance db/migrate/backend/proxy
 make down      # stoppe les containers (garde les données Postgres)
 make restart   # down puis up
 make logs      # suit les logs de tous les services (Ctrl+C pour sortir, ne stoppe rien)
@@ -159,8 +181,9 @@ Rien n'oblige à passer par Compose : Postgres via Homebrew + `uv run uvicorn --
 
 ## Ce qui n'est pas encore fait (prochaines étapes DevOps)
 
-- **Migrations Alembic — le build Docker est en retard sur `apps/server`.** `alembic upgrade head` n'est lancé nulle part dans le chemin Docker : ni l'`ENTRYPOINT`, ni `compose.yml`, ni le `Makefile`. Sur un volume vide, `make up` donne donc une base **sans aucune table**, et les endpoints métier renvoient 500. `alembic/` et `alembic.ini` ne sont même pas copiés dans l'image. Prochaine étape : les copier, puis appliquer les migrations via un service `migrate` one-shot (`depends_on: db: service_healthy`, et `backend` qui attend son `service_completed_successfully`).
-- **Rationaliser les secrets qui traînent dans `.env`.** `db` ne reçoit plus que ses trois variables, mais `backend` reçoit toujours tout le fichier (`JWT_SECRET`, `FORTY_TWO_CLIENT_SECRET`). Les secrets Compose (`secrets:` + convention `_FILE`) seraient plus propres, mais demandent que `app/config.py` sache lire une valeur depuis un fichier — à arbitrer avec Malik.
+- **Tests CI** pour vérifier l'intégrité de l'infra et des services — c'est eux qui prouvent qu'une stack `healthy` est utilisable.
+- **Outils de visualisation des tables** et documentation du schéma (ERD généré).
+- **Centraliser env et secrets** pour builder proprement, en gardant la lisibilité pour chaque dev (chacun son scope). Aujourd'hui `backend` reçoit tout le fichier `.env`, `JWT_SECRET` et `FORTY_TWO_CLIENT_SECRET` compris ; les secrets Compose (`secrets:` + convention `_FILE`) seraient plus propres, mais demandent que `app/config.py` sache lire une valeur depuis un fichier — à arbitrer avec Malik.
 - Service `web` dans `compose.yml` dès que Swan a un front buildable (Dockerfile + build servi par `proxy`).
 - Seed / données de démo, éventuelle machine de démo déjà chaude.
 - Endpoints WebSocket (chat, notifs, online) : le `proxy` est déjà prêt à les faire passer (upgrade HTTP→WS géré dans `infra/nginx/nginx.conf`, forcément en `wss://` côté navigateur puisque tout passe par HTTPS) — mais rien n'existe encore côté `apps/server/app/` ni côté front. À coder quand le module WS du CDC démarre.
