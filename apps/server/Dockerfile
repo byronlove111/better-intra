@@ -18,6 +18,10 @@ RUN uv sync --frozen --no-install-project --no-dev
 COPY app ./app
 RUN uv sync --frozen --no-dev
 
+# dependences alembic pour migration de base de données
+COPY alembic.ini ./
+COPY alembic ./alembic
+
 EXPOSE 8000
 
 ENTRYPOINT ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

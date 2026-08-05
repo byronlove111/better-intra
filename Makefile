@@ -3,7 +3,7 @@
 COMPOSE := $(shell command -v docker >/dev/null 2>&1 && echo "docker compose" || echo "podman compose")
 CERT_DIR := infra/nginx/certs
 
-.PHONY: help up down restart logs ps clean certs
+.PHONY: help up down restart logs ps clean certs db-ui db-ui-down
 
 help:
 	@echo "BetterIntra — commandes :"
@@ -14,6 +14,8 @@ help:
 	@echo "  make ps       - liste les containers et leur etat"
 	@echo "  make clean    - down + supprime les images buildees (garde le volume Postgres)"
 	@echo "  make certs    - (re)genere le certificat self-signed du proxy nginx"
+	@echo "  make db-ui    - lance Adminer sur http://localhost:8081 (visualiseur de tables)"
+	@echo "  make db-ui-down - stoppe Adminer"
 
 # Certif self-signed local pour nginx tls:
 # généré une fois sur l'hôte via openssl, jamais committé (.gitignore),
@@ -47,3 +49,14 @@ ps:
 # pour repartir d'un build propre sans toucher au volume de données Postgres.
 clean: down
 	$(COMPOSE) down --rmi all
+
+# Adminer est sous "profiles: [tools]" dans le compose : il n'existe pour aucune
+# commande qui ne passe pas --profile, y compris "up". "down" le stoppe quand
+# même, la commande porte sur tout le projet.
+db-ui:
+	$(COMPOSE) --profile tools up -d adminer
+	@echo "Adminer : http://localhost:8081  (serveur pre-rempli : db:5432)"
+	@echo "Identifiants : POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB de ton .env"
+
+db-ui-down:
+	$(COMPOSE) --profile tools stop adminer

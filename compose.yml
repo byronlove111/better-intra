@@ -1,3 +1,16 @@
+# la migration et le backend ont la meme base
+# les deux services vont hériter de la meme image et des memes volumes.
+x-server-base: &server-base
+  build: ./apps/server
+  image: ${COMPOSE_PROJECT_NAME:-better-intra}-server
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  # Bind mount dev pour le hot reload et le debug.
+  volumes:
+    - ./apps/server/app:/app/app
+    - ./apps/server/alembic:/app/alembic
+
 services:
   db:
     image: postgres:16-alpine
@@ -15,20 +28,20 @@ services:
       retries: 10
       start_period: 30s
 
+  # herite de la meme image que le backend, mais ne fait qu'une migration et s'arrete.
+  migrate:
+    <<: *server-base
+    entrypoint: ["uv", "run", "alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
   backend:
-    build: ./apps/server
-    env_file: .env
-    environment:
-      # Surcharge volontaire : .env.DATABASE_URL vise "localhost" (dev Homebrew
-      # hors Docker, voir README). Dans le réseau du compose, Postgres est
-      # joignable via le nom du service "db", pas "localhost" ni 127.0.0.1.
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    # Code monté en live : les changements sur apps/server/app sont visibles
-    # dans le container sans rebuild d'image (le .venv, lui, reste celui buildé
-    # dans l'image — un ajout de dépendance nécessite toujours un rebuild).
-    volumes:
-      - ./apps/server/app:/app/app
-    command: ["--reload"]
+    <<: *server-base
+    # --reload-dir remplace la racine surveillee par defaut (/app) : seul le code
+    # de l'API declenche un reload, plus les migrations que l'API n'importe pas.
+    command: ["--reload", "--reload-dir", "/app/app"]
     ports:
       # Publié pour du debug direct (curl, Swagger) pendant le dev, sur la
       # loopback uniquement. Le navigateur, lui, doit toujours passer par
@@ -38,6 +51,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
       interval: 10s
@@ -63,6 +78,18 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+
+  # Outil de dev : visualiseur de tables.
+  adminer:
+    image: adminer:5
+    profiles: ["tools"]
+    environment:
+      ADMINER_DEFAULT_SERVER: db:5432
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:
