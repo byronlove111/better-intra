@@ -79,5 +79,17 @@ services:
       retries: 3
       start_period: 5s
 
+  # Outil de dev : visualiseur de tables.
+  adminer:
+    image: adminer:5
+    profiles: ["tools"]
+    environment:
+      ADMINER_DEFAULT_SERVER: db:5432
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db_data:

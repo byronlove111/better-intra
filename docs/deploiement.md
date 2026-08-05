@@ -40,6 +40,7 @@ make up
 | `backend` (FastAPI) | API | https://localhost:8443/... (via le proxy) · aussi sur http://127.0.0.1:8000 pour du debug, **depuis ta machine uniquement** |
 | `migrate` (one-shot) | Applique les migrations Alembic, puis sort | pas de port — voir « Migrations » |
 | `db` (Postgres 16) | Base de données | interne au réseau Docker uniquement (pas de port publié) |
+| `adminer` (optionnel) | Visualiseur de tables | http://localhost:8081, **uniquement** après `make db-ui` |
 
 Ports 8080/8443 (pas 80/443) : `proxy` publie sur des ports non-privilégiés pour rester portable sur toutes les machines de l'équipe — le rootless Podman (sans root) ne peut pas bind un port < 1024, alors que Docker et Podman machine/Desktop n'ont pas cette contrainte. Sur `http://localhost:8080`, nginx répond par une redirection 301 vers `https://localhost:8443`.
 
@@ -161,7 +162,15 @@ make logs      # suit les logs de tous les services (Ctrl+C pour sortir, ne stop
 make ps        # liste les containers et leur état
 make clean     # down + supprime les images buildées (garde le volume Postgres)
 make certs     # (re)génère le certificat HTTPS local si absent
+make db-ui     # lance Adminer sur http://localhost:8081 (visualiseur de tables)
+make db-ui-down # stoppe Adminer
 ```
+
+### Visualiser les tables (Adminer)
+
+Entrer le nom de la db, l'user et le mot de passe (les `POSTGRES_*` du `.env`) pour visualiser les tables dans l'UI Adminer.
+
+**Provisoire** : c'est un dépannage en attendant mieux (schéma généré en Mermaid dans la doc, ou autre visualiseur). Se retire en supprimant le service `adminer` du compose et les deux cibles `make`.
 
 ## Le lancement manuel sans Docker reste disponible
 
@@ -197,6 +206,7 @@ La machine reste `localhost` (pas de vrai domaine/prod à prévoir), mais côté
 
 - **Port 8000 du `backend` publié en clair sur la loopback** (`compose.yml`, `ports: "127.0.0.1:8000:8000"`) : le bind sur `127.0.0.1` le rend injoignable depuis le réseau — ce n'est donc plus un point d'entrée exposé, seulement un raccourci local pour `curl`/Swagger. Reste que ça demeure du HTTP en clair : **avant la correction, le plus propre est de le retirer** (ou de le passer derrière un profile Compose type `debug` qu'on n'active pas ce jour-là), pour n'avoir qu'un seul chemin, celui du proxy.
 - **`FORTY_TWO_REDIRECT_URI=http://localhost:8000/auth/callback`** (`.env.example`) : pointe par défaut sur le port backend en clair, pas sur le proxy HTTPS (`8443`). À corriger en `https://localhost:8443/auth/callback` dès que l'auth 42 est branchée — sinon l'échange du code OAuth transite par le point d'entrée non chiffré du point précédent.
+- **Adminer sur `127.0.0.1:8081`** en HTTP clair, avec un accès complet en écriture à la base.
 - **CORS large** : `allow_methods=["*"]` / `allow_headers=["*"]` avec `allow_credentials=True` dans `apps/server/app/main.py`. Sans vrai risque tant que tous les points d'entrée exposés sont en HTTPS, mais à resserrer si le port 8000 reste accessible en clair.
 
 Le reste (cert self-signé, pas de headers HTTP genre HSTS/CSP) n'a pas besoin d'être traité : la machine reste `localhost`, pas de vrai domaine public à durcir.
