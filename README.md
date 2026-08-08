@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by [team — TBD].*
+*This project has been created as part of the 42 curriculum by [team DBF].*
 
 # BetterIntra
 
