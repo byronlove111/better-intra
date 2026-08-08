@@ -100,6 +100,21 @@ pnpm dev
 
 → http://localhost:5174 (proxy Vite vers l’API)
 
+## Backend tests (pytest)
+
+Unit + API integration against a **dedicated** Postgres DB (`betterintra_test`). No live 42 API calls.
+
+```bash
+# once
+createdb -O betterintra betterintra_test 2>/dev/null || true
+
+cd apps/server
+uv sync --group dev
+uv run pytest -q
+```
+
+Override DB: `TEST_DATABASE_URL=postgresql+psycopg://… uv run pytest -q`
+
 ## Environment
 
 Never commit real `.env` or 42 secrets.
