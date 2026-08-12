@@ -151,6 +151,12 @@ Le `.env` à la racine (copié depuis `.env.example`, jamais committé) est lu a
 
 **À centraliser** — deux fichiers à tenir à la main, c'est une variable oubliée qui retombe silencieusement sur le défaut de `config.py`. Pistes : une règle `make` qui génère les `.env` des services depuis celui de la racine, et les secrets Compose (`secrets:` + convention `_FILE`) pour sortir `JWT_SECRET` et `FORTY_TWO_CLIENT_SECRET` du fichier d'environnement. Objectif : une seule source de vérité, et chaque dev garde la vue sur son scope.
 
+## Intégration continue (GitHub Actions)
+
+Le job `backend-tests` tourne sur chaque PR vers `main` et chaque push sur `main`. Détail du workflow: [`.github/README.md`](../.github/README.md).
+
+Le rejouer en local : `make ci-backend`.
+
 ## Commandes disponibles (`make help`)
 
 ```bash
@@ -164,6 +170,7 @@ make clean     # down + supprime les images buildées (garde le volume Postgres)
 make certs     # (re)génère le certificat HTTPS local si absent
 make db-ui     # lance Adminer sur http://localhost:8081 (visualiseur de tables)
 make db-ui-down # stoppe Adminer
+make ci-backend # rejoue en local le job CI des tests backend
 ```
 
 ### Visualiser les tables (Adminer)
@@ -190,7 +197,7 @@ Rien n'oblige à passer par Compose : Postgres via Homebrew + `uv run uvicorn --
 
 ## Ce qui n'est pas encore fait (prochaines étapes DevOps)
 
-- **Tests CI** pour vérifier l'intégrité de l'infra et des services — c'est eux qui prouvent qu'une stack `healthy` est utilisable.
+- **CI d'infra** : les tests backend tournent désormais sur chaque PR (voir « Intégration continue »), mais rien ne vérifie encore que l'image build, que les migrations Alembic passent, ni que la stack complète répond. C'est le second job à écrire.
 - **Outils de visualisation des tables** et documentation du schéma (ERD généré).
 - **Centraliser env et secrets** pour builder proprement, en gardant la lisibilité pour chaque dev (chacun son scope). Aujourd'hui `backend` reçoit tout le fichier `.env`, `JWT_SECRET` et `FORTY_TWO_CLIENT_SECRET` compris ; les secrets Compose (`secrets:` + convention `_FILE`) seraient plus propres, mais demandent que `app/config.py` sache lire une valeur depuis un fichier — à arbitrer avec Malik.
 - Service `web` dans `compose.yml` dès que Swan a un front buildable (Dockerfile + build servi par `proxy`).
