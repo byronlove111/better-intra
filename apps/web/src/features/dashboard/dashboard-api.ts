@@ -1,30 +1,5 @@
 import { apiRequest } from "@/lib/api"
 
-type IntraCursus = {
-  name: string | null
-  grade: string | null
-  level: number | null
-  end_at: string | null
-  blackholed_at: string | null
-}
-
-type IntraCampus = {
-  name: string | null
-  city: string | null
-  country: string | null
-}
-
-export type IntraProfile = {
-  login: string
-  displayname: string | null
-  wallet: number | null
-  correction_point: number | null
-  location: string | null
-  avatar_url: string | null
-  campus: IntraCampus[]
-  cursus: IntraCursus[]
-}
-
 export type AgendaEvent = {
   id: string
   title: string
@@ -89,10 +64,6 @@ export type LogtimeResponse = {
   total_hours: number
   active_days: number
   days: LogtimeDay[]
-}
-
-export function getDashboardIntraProfile() {
-  return apiRequest<IntraProfile>("/me/intra")
 }
 
 export async function getDashboardEvents() {

@@ -7,7 +7,7 @@ import {
   Pencil,
   Users,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import {
@@ -39,7 +39,6 @@ import {
 import {
   getDashboardEvaluations,
   getDashboardEvents,
-  getDashboardIntraProfile,
   getDashboardLogtime,
   getDashboardOnlineFriends,
 } from "@/features/dashboard/dashboard-api"
@@ -72,6 +71,8 @@ export function DashboardPage() {
   const [isEditingBio, setIsEditingBio] = useState(false)
   const [bioDraft, setBioDraft] = useState("")
   const [savedBio, setSavedBio] = useState<string | null | undefined>(undefined)
+  const [requestStage, setRequestStage] = useState(0)
+  const [isLogtimeActivated, setIsLogtimeActivated] = useState(false)
   const monthRange = getMonthRange(selectedMonth)
 
   const currentUserRequest = useQuery({
@@ -98,11 +99,19 @@ export function DashboardPage() {
   const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
 
   const dashboardQueriesEnabled = isIntraLinked && !isPreview
-  const intraRequest = useQuery({
-    queryKey: ["dashboard", "intra-profile"],
-    queryFn: getDashboardIntraProfile,
-    enabled: dashboardQueriesEnabled,
-  })
+
+  useEffect(() => {
+    if (!dashboardQueriesEnabled) return
+
+    const eventsTimer = window.setTimeout(() => setRequestStage(1), 2000)
+    const evaluationsTimer = window.setTimeout(() => setRequestStage(2), 5000)
+
+    return () => {
+      window.clearTimeout(eventsTimer)
+      window.clearTimeout(evaluationsTimer)
+    }
+  }, [dashboardQueriesEnabled])
+
   const profileRequest = useQuery({
     queryKey: ["profile", "me"],
     queryFn: getMyProfile,
@@ -116,12 +125,18 @@ export function DashboardPage() {
   const eventsRequest = useQuery({
     queryKey: ["dashboard", "events"],
     queryFn: getDashboardEvents,
-    enabled: dashboardQueriesEnabled,
+    enabled:
+      dashboardQueriesEnabled
+      && requestStage >= 1
+      && profileRequest.isSuccess,
   })
   const evaluationsRequest = useQuery({
     queryKey: ["dashboard", "evaluations"],
     queryFn: getDashboardEvaluations,
-    enabled: dashboardQueriesEnabled,
+    enabled:
+      dashboardQueriesEnabled
+      && requestStage >= 2
+      && eventsRequest.isSuccess,
   })
   const onlineFriendsRequest = useQuery({
     queryKey: ["dashboard", "online-friends"],
@@ -129,15 +144,15 @@ export function DashboardPage() {
     enabled: dashboardQueriesEnabled,
   })
   const logtimeRequest = useQuery({
-    queryKey: ["dashboard", "logtime", monthRange.beginAt],
+    queryKey: ["profile", "me", "logtime", monthRange.beginAt],
     queryFn: () => getDashboardLogtime(monthRange.beginAt, monthRange.endAt),
-    enabled: dashboardQueriesEnabled,
+    enabled: dashboardQueriesEnabled && isLogtimeActivated,
   })
 
   const oauthStatus = searchParams.get("intra")
   const linkError = getApiErrorMessage(linkIntraRequest.error)
-  const intra = isPreview ? dashboardPreview.intra : intraRequest.data
   const profile = isPreview ? dashboardPreview.profile : profileRequest.data
+  const intra = profile?.intra
   const friendStats = isPreview
     ? dashboardPreview.friendStats
     : friendStatsRequest.data
@@ -157,7 +172,7 @@ export function DashboardPage() {
   const currentCursus = getCurrentCursus(intra?.cursus ?? [])
   const currentCampus = intra?.campus[0]
   const levelProgress = getLevelProgress(currentCursus?.level)
-  const avatarFallback = getInitials(intra?.displayname ?? intra?.login)
+  const avatarFallback = getInitials(profile?.display_name ?? profile?.login)
   const friendStatsUnavailable =
     !isPreview && (friendStatsRequest.isPending || friendStatsRequest.isError)
   const followingCount = friendStatsUnavailable
@@ -258,15 +273,15 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {isIntraLinked && !isPreview && intraRequest.isPending && (
+      {isIntraLinked && !isPreview && profileRequest.isPending && (
         <p className="text-sm text-muted-foreground">
           Chargement du Dashboard…
         </p>
       )}
 
-      {!isPreview && intraRequest.isError && (
+      {!isPreview && profileRequest.isError && (
         <p role="alert" className="text-sm text-destructive">
-          {getApiErrorMessage(intraRequest.error)}
+          {getApiErrorMessage(profileRequest.error)}
         </p>
       )}
 
@@ -278,17 +293,17 @@ export function DashboardPage() {
                 <div className="flex items-center gap-5">
                   <Avatar className="size-24 shrink-0">
                     <AvatarImage
-                      src={intra.avatar_url ?? undefined}
-                      alt={`Photo de ${intra.displayname ?? intra.login}`}
+                      src={profile?.avatar_url ?? undefined}
+                      alt={`Photo de ${profile?.display_name ?? profile?.login}`}
                     />
                     <AvatarFallback>{avatarFallback}</AvatarFallback>
                   </Avatar>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <CardTitle>
-                      {intra.displayname ?? "Profil Intra"}
+                      {profile?.display_name ?? "Profil Intra"}
                     </CardTitle>
-                    <CardDescription>@{intra.login}</CardDescription>
+                    <CardDescription>@{profile?.login}</CardDescription>
                     <p className="text-sm text-muted-foreground">
                       {intra.location ?? "Non connecté"}
                     </p>
@@ -377,7 +392,7 @@ export function DashboardPage() {
               blackholedAt={currentCursus?.blackholed_at}
               wallet={intra.wallet}
               correctionPoints={intra.correction_point}
-              isUnavailable={intraRequest.isError && !isPreview}
+              isUnavailable={profileRequest.isError && !isPreview}
             />
 
             <Card>
@@ -524,6 +539,9 @@ export function DashboardPage() {
               isCurrentMonth={isCurrentMonth}
               isLoading={logtimeRequest.isPending && !isPreview}
               isError={logtimeRequest.isError && !isPreview}
+              isActivated={isPreview || isLogtimeActivated}
+              canActivate={isPreview || evaluationsRequest.isSuccess}
+              onActivate={() => setIsLogtimeActivated(true)}
               onPreviousMonth={() => changeMonth(-1)}
               onNextMonth={() => changeMonth(1)}
             />

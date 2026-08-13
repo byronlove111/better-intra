@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { FolderKanban } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -65,32 +65,52 @@ export function ProfilePage() {
   const isPreview =
     import.meta.env.DEV && searchParams.get("preview") === "profile"
   const isOwnProfile = !login
+  const profileKey = login ?? "me"
   const [selectedMonth, setSelectedMonth] = useState(
     () => new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)),
   )
+  const [projectsReadyFor, setProjectsReadyFor] = useState<string | null>(null)
+  const [logtimeProfile, setLogtimeProfile] = useState<string | null>(null)
   const monthRange = getMonthRange(selectedMonth)
   const profileRequest = useQuery({
-    queryKey: ["profile", login ?? "me"],
+    queryKey: ["profile", profileKey],
     queryFn: () => login ? getUserProfile(login) : getMyProfile(),
     enabled: !isPreview,
   })
+  const hasLoadedIntraProfile = Boolean(profileRequest.data?.intra)
+
+  useEffect(() => {
+    if (isPreview || !hasLoadedIntraProfile) return
+
+    const timer = window.setTimeout(() => {
+      setProjectsReadyFor(profileKey)
+    }, 2000)
+
+    return () => window.clearTimeout(timer)
+  }, [hasLoadedIntraProfile, isPreview, profileKey])
 
   const statsRequest = useQuery({
-    queryKey: ["friends", "stats", login ?? "me"],
+    queryKey: ["friends", "stats", profileKey],
     queryFn: () => login ? getUserFriendStats(login) : getMyFriendStats(),
-    enabled: !isPreview && Boolean(profileRequest.data?.intra),
+    enabled: !isPreview && hasLoadedIntraProfile,
   })
 
   const logtimeRequest = useQuery({
-    queryKey: ["profile", login ?? "me", "logtime", monthRange.beginAt],
+    queryKey: ["profile", profileKey, "logtime", monthRange.beginAt],
     queryFn: () => getProfileLogtime(login, monthRange.beginAt, monthRange.endAt),
-    enabled: !isPreview && Boolean(profileRequest.data?.intra),
+    enabled:
+      !isPreview
+      && hasLoadedIntraProfile
+      && logtimeProfile === profileKey,
   })
 
   const projectsRequest = useQuery({
-    queryKey: ["profile", login ?? "me", "projects"],
+    queryKey: ["profile", profileKey, "projects"],
     queryFn: () => getProfileProjects(login),
-    enabled: !isPreview && Boolean(profileRequest.data?.intra),
+    enabled:
+      !isPreview
+      && hasLoadedIntraProfile
+      && projectsReadyFor === profileKey,
   })
 
   if (!isPreview && profileRequest.isPending) {
@@ -116,6 +136,7 @@ export function ProfilePage() {
   const isCurrentMonth =
     selectedMonth.getUTCFullYear() === currentMonth.getFullYear()
     && selectedMonth.getUTCMonth() === currentMonth.getMonth()
+  const isLogtimeActivated = isPreview || logtimeProfile === profileKey
   const avatarFallback = getInitials(profile.display_name ?? profile.login)
   const statsUnavailable =
     !isPreview && (statsRequest.isPending || statsRequest.isError)
@@ -235,6 +256,9 @@ export function ProfilePage() {
             isCurrentMonth={isCurrentMonth}
             isLoading={logtimeRequest.isPending && !isPreview}
             isError={logtimeRequest.isError && !isPreview}
+            isActivated={isLogtimeActivated}
+            canActivate={isPreview || projectsRequest.isSuccess}
+            onActivate={() => setLogtimeProfile(profileKey)}
             onPreviousMonth={() => changeMonth(-1)}
             onNextMonth={() => changeMonth(1)}
           />

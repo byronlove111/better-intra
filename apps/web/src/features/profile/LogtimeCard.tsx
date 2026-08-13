@@ -21,6 +21,9 @@ type LogtimeCardProps = {
   isCurrentMonth: boolean
   isLoading?: boolean
   isError?: boolean
+  isActivated?: boolean
+  canActivate?: boolean
+  onActivate?: () => void
   onPreviousMonth: () => void
   onNextMonth: () => void
 }
@@ -31,6 +34,9 @@ export function LogtimeCard({
   isCurrentMonth,
   isLoading = false,
   isError = false,
+  isActivated = true,
+  canActivate = true,
+  onActivate,
   onPreviousMonth,
   onNextMonth,
 }: LogtimeCardProps) {
@@ -40,6 +46,29 @@ export function LogtimeCard({
     timeZone: "UTC",
   }).format(month)
   const calendar = logtime ? getMonthCalendar(month, logtime) : []
+
+  if (!isActivated) {
+    return (
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Timer />
+            Logtime
+          </CardTitle>
+          <CardDescription>
+            {canActivate
+              ? "Charge ton logtime uniquement quand tu en as besoin."
+              : "Les autres données sont chargées en premier."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={onActivate} disabled={!canActivate}>
+            Charger le logtime
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card size="sm">
