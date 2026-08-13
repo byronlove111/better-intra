@@ -380,10 +380,12 @@ export function DashboardPage() {
                     {currentCampus?.name ?? "Campus non renseigné"}
                     {currentCursus?.name ? ` · ${currentCursus.name}` : ""}
                     {currentCursus?.grade ? ` · ${currentCursus.grade}` : ""}
-                    {currentCursus?.end_at
-                      ? ` · Fin du cursus : ${formatDateOnly(currentCursus.end_at)}`
-                      : ""}
                   </p>
+                  {currentCursus?.end_at && (
+                    <p className="text-sm">
+                      Fin du cursus prévue : {formatDateOnly(currentCursus.end_at)}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

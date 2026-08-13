@@ -217,9 +217,11 @@ export function ProfilePage() {
                   {campus?.name ?? "Campus non renseigné"}
                   {cursus?.name ? ` · ${cursus.name}` : ""}
                   {cursus?.grade ? ` · ${cursus.grade}` : ""}
-                  {cursus?.end_at
-                    ? ` · Fin du cursus : ${formatDateOnly(cursus.end_at)}`
-                    : ""}
+                </p>
+              )}
+              {hasIntraProfile && cursus?.end_at && (
+                <p className="text-sm">
+                  Fin du cursus prévue : {formatDateOnly(cursus.end_at)}
                 </p>
               )}
             </div>

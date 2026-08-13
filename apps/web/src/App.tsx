@@ -6,6 +6,7 @@ import { DashboardPage } from "@/pages/DashboardPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { ProfilePage } from "@/pages/ProfilePage"
+import { ProjectsPage } from "@/pages/ProjectsPage"
 import { RegisterPage } from "@/pages/RegisterPage"
 
 function RootRedirect() {
@@ -31,6 +32,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:login" element={<ProfilePage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
         </Route>
       </Route>
 

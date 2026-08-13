@@ -14,6 +14,7 @@ export function ProtectedRoute() {
   const isPreview = import.meta.env.DEV && (
     (location.pathname === "/dashboard" && preview === "dashboard")
     || (location.pathname.startsWith("/profile") && preview === "profile")
+    || (location.pathname === "/projects" && preview === "projects")
   )
 
   const currentUserQuery = useQuery({

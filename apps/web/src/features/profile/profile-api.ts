@@ -98,6 +98,14 @@ export async function getProfileProjects(login: string | undefined) {
   return response.items
 }
 
+export async function getMyProjectsPage(page: number, pageSize: number) {
+  const response = await apiRequest<ProjectsResponse>(
+    `/me/intra/projects?page=${page}&page_size=${pageSize}`,
+  )
+
+  return response.items
+}
+
 export async function getProfileLogtime(
   login: string | undefined,
   beginAt: string,
