@@ -36,7 +36,14 @@ export type IntraEvaluation = {
   id: number
   role: "corrector" | "corrected"
   begin_at: string | null
+  final_mark: number | null
+  comment: string | null
   project_name: string | null
+  corrector_login: string | null
+  corrected_logins: string[]
+  // Ces champs seront affichés si le backend expose le feedback sur l'évaluateur.
+  feedback_rating?: number | null
+  feedback_comment?: string | null
 }
 
 type EvaluationsResponse = {
@@ -72,11 +79,9 @@ export async function getDashboardEvents() {
 }
 
 export async function getDashboardEvaluations() {
-  const response = await apiRequest<EvaluationsResponse>(
-    "/me/intra/evaluations?page_size=30",
-  )
+  const evaluations = await getEvaluationsPage(1, 30)
 
-  return response.items
+  return evaluations
     .filter((evaluation) =>
       evaluation.begin_at
         ? new Date(evaluation.begin_at).getTime() >= Date.now()
@@ -86,6 +91,14 @@ export async function getDashboardEvaluations() {
       new Date(first.begin_at!).getTime() - new Date(second.begin_at!).getTime(),
     )
     .slice(0, 5)
+}
+
+export async function getEvaluationsPage(page: number, pageSize: number) {
+  const response = await apiRequest<EvaluationsResponse>(
+    `/me/intra/evaluations?page=${page}&page_size=${pageSize}`,
+  )
+
+  return response.items
 }
 
 export async function getDashboardOnlineFriends() {

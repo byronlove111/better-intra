@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { AppLayout } from "@/layouts/AppLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { EvaluationsPage } from "@/pages/EvaluationsPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { ProfilePage } from "@/pages/ProfilePage"
@@ -33,6 +34,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:login" element={<ProfilePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/evaluations" element={<EvaluationsPage />} />
         </Route>
       </Route>
 

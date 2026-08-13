@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Bell,
+  ClipboardCheck,
   FolderKanban,
   LayoutDashboard,
   LogOut,
@@ -42,7 +43,12 @@ export function AppLayout() {
   const queryClient = useQueryClient()
   const preview = new URLSearchParams(location.search).get("preview")
   const isPreview = import.meta.env.DEV
-    && (preview === "dashboard" || preview === "profile" || preview === "projects")
+    && (
+      preview === "dashboard"
+      || preview === "profile"
+      || preview === "projects"
+      || preview === "evaluations"
+    )
   const currentUser = queryClient.getQueryData<AuthUser>(["auth", "me"])
   const notificationsRequest = useQuery({
     queryKey: ["notifications"],
@@ -124,6 +130,22 @@ export function AppLayout() {
           >
             <FolderKanban />
             Projets
+          </NavLink>
+          <NavLink
+            to={isPreview
+              ? "/evaluations?preview=evaluations"
+              : "/evaluations"}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+                isActive
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )
+            }
+          >
+            <ClipboardCheck />
+            Évaluations
           </NavLink>
         </nav>
 
