@@ -1,7 +1,20 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { CheckCircle2, Link2 } from "lucide-react"
+import {
+  CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  Link2,
+  Pencil,
+  Users,
+} from "lucide-react"
+import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -11,18 +24,60 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+} from "@/components/ui/field"
 import {
   getCurrentUser,
   startFortyTwoLink,
 } from "@/features/auth/auth-api"
+import {
+  getDashboardEvaluations,
+  getDashboardEvents,
+  getDashboardIntraProfile,
+  getDashboardLogtime,
+  getDashboardOnlineFriends,
+} from "@/features/dashboard/dashboard-api"
+import { dashboardPreview } from "@/features/dashboard/dashboard-preview"
+import {
+  getMyFriendStats,
+  getMyProfile,
+  updateMyBio,
+} from "@/features/profile/profile-api"
+import { IntraStatsCards } from "@/features/profile/IntraStatsCards"
+import { LogtimeCard } from "@/features/profile/LogtimeCard"
+import {
+  formatDate,
+  formatDateOnly,
+  getCurrentCursus,
+  getInitials,
+  getLevelProgress,
+  getMonthRange,
+  getPreviewLogtime,
+} from "@/features/profile/profile-display"
 import { getApiErrorMessage } from "@/lib/api"
 
 export function DashboardPage() {
   const [searchParams] = useSearchParams()
+  const isPreview =
+    import.meta.env.DEV && searchParams.get("preview") === "dashboard"
+  const [selectedMonth, setSelectedMonth] = useState(
+    () => new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)),
+  )
+  const [isEditingBio, setIsEditingBio] = useState(false)
+  const [bioDraft, setBioDraft] = useState("")
+  const [savedBio, setSavedBio] = useState<string | null | undefined>(undefined)
+  const monthRange = getMonthRange(selectedMonth)
 
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
+    enabled: !isPreview,
   })
 
   const linkIntraRequest = useMutation({
@@ -32,18 +87,129 @@ export function DashboardPage() {
     },
   })
 
+  const updateBioRequest = useMutation({
+    mutationFn: updateMyBio,
+    onSuccess: (profile) => {
+      setSavedBio(profile.bio)
+      setIsEditingBio(false)
+    },
+  })
+
+  const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
+
+  const dashboardQueriesEnabled = isIntraLinked && !isPreview
+  const intraRequest = useQuery({
+    queryKey: ["dashboard", "intra-profile"],
+    queryFn: getDashboardIntraProfile,
+    enabled: dashboardQueriesEnabled,
+  })
+  const profileRequest = useQuery({
+    queryKey: ["profile", "me"],
+    queryFn: getMyProfile,
+    enabled: dashboardQueriesEnabled,
+  })
+  const friendStatsRequest = useQuery({
+    queryKey: ["friends", "stats", "me"],
+    queryFn: getMyFriendStats,
+    enabled: dashboardQueriesEnabled,
+  })
+  const eventsRequest = useQuery({
+    queryKey: ["dashboard", "events"],
+    queryFn: getDashboardEvents,
+    enabled: dashboardQueriesEnabled,
+  })
+  const evaluationsRequest = useQuery({
+    queryKey: ["dashboard", "evaluations"],
+    queryFn: getDashboardEvaluations,
+    enabled: dashboardQueriesEnabled,
+  })
+  const onlineFriendsRequest = useQuery({
+    queryKey: ["dashboard", "online-friends"],
+    queryFn: getDashboardOnlineFriends,
+    enabled: dashboardQueriesEnabled,
+  })
+  const logtimeRequest = useQuery({
+    queryKey: ["dashboard", "logtime", monthRange.beginAt],
+    queryFn: () => getDashboardLogtime(monthRange.beginAt, monthRange.endAt),
+    enabled: dashboardQueriesEnabled,
+  })
+
   const oauthStatus = searchParams.get("intra")
   const linkError = getApiErrorMessage(linkIntraRequest.error)
+  const intra = isPreview ? dashboardPreview.intra : intraRequest.data
+  const profile = isPreview ? dashboardPreview.profile : profileRequest.data
+  const friendStats = isPreview
+    ? dashboardPreview.friendStats
+    : friendStatsRequest.data
+  const events = isPreview ? dashboardPreview.events : (eventsRequest.data ?? [])
+  const evaluations = isPreview
+    ? dashboardPreview.nextEvaluations
+    : (evaluationsRequest.data ?? [])
+  const onlineFriends = isPreview
+    ? dashboardPreview.onlineFriends
+    : (onlineFriendsRequest.data ?? [])
+  const logtime = isPreview
+    ? getPreviewLogtime(selectedMonth)
+    : logtimeRequest.data
+  const displayedBio = savedBio !== undefined
+    ? savedBio
+    : profile?.bio
+  const currentCursus = getCurrentCursus(intra?.cursus ?? [])
+  const currentCampus = intra?.campus[0]
+  const levelProgress = getLevelProgress(currentCursus?.level)
+  const avatarFallback = getInitials(intra?.displayname ?? intra?.login)
+  const friendStatsUnavailable =
+    !isPreview && (friendStatsRequest.isPending || friendStatsRequest.isError)
+  const followingCount = friendStatsUnavailable
+    ? "—"
+    : (friendStats?.following_count ?? 0)
+  const followersCount = friendStatsUnavailable
+    ? "—"
+    : (friendStats?.followers_count ?? 0)
+  const currentMonth = new Date()
+  const isCurrentMonth =
+    selectedMonth.getUTCFullYear() === currentMonth.getFullYear()
+    && selectedMonth.getUTCMonth() === currentMonth.getMonth()
+
+  let bioText = displayedBio?.trim() || "Tu n’as pas encore ajouté de bio."
+
+  if (!isPreview && profileRequest.isPending) {
+    bioText = "Chargement de la bio…"
+  } else if (!isPreview && profileRequest.isError) {
+    bioText = "La bio est temporairement indisponible."
+  }
+
+  function changeMonth(offset: number) {
+    setSelectedMonth((month) =>
+      new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + offset, 1)),
+    )
+  }
+
+  function startBioEdition() {
+    updateBioRequest.reset()
+    setBioDraft(displayedBio ?? "")
+    setIsEditingBio(true)
+  }
+
+  function cancelBioEdition() {
+    updateBioRequest.reset()
+    setIsEditingBio(false)
+  }
+
+  function saveBio() {
+    const newBio = bioDraft.trim()
+
+    if (isPreview) {
+      setSavedBio(newBio)
+      setIsEditingBio(false)
+      return
+    }
+
+    updateBioRequest.mutate(newBio)
+  }
 
   return (
     <section className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="mt-2 text-muted-foreground">
-          Bienvenue sur BetterIntra.
-        </p>
-      </div>
-
       {oauthStatus === "linked" && (
         <p className="flex items-center gap-2 text-sm text-primary">
           <CheckCircle2 />
@@ -57,13 +223,13 @@ export function DashboardPage() {
         </p>
       )}
 
-      {!currentUserRequest.data?.is_intra_linked && (
+      {!isIntraLinked && !isPreview && (
         <Card className="max-w-xl border-l-4 border-l-primary">
           <CardHeader>
             <CardTitle>Lier ton compte Intra 42</CardTitle>
             <CardDescription>
-              Cette étape débloque ton profil campus, tes projets, les événements,
-              les amis et le chat.
+              Cette étape débloque ton profil campus, tes projets, les événements
+              42, les amis et le chat.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -92,15 +258,277 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {currentUserRequest.data?.is_intra_linked && (
-        <Card className="max-w-xl">
-          <CardHeader>
-            <CardTitle>Compte Intra lié</CardTitle>
-            <CardDescription>
-              Connecté en tant que {currentUserRequest.data.login}.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      {isIntraLinked && !isPreview && intraRequest.isPending && (
+        <p className="text-sm text-muted-foreground">
+          Chargement du Dashboard…
+        </p>
+      )}
+
+      {!isPreview && intraRequest.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {getApiErrorMessage(intraRequest.error)}
+        </p>
+      )}
+
+      {intra && (
+        <>
+          <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(14rem,1fr)_minmax(14rem,1fr)]">
+            <Card>
+              <CardContent className="flex flex-col gap-5">
+                <div className="flex items-center gap-5">
+                  <Avatar className="size-24 shrink-0">
+                    <AvatarImage
+                      src={intra.avatar_url ?? undefined}
+                      alt={`Photo de ${intra.displayname ?? intra.login}`}
+                    />
+                    <AvatarFallback>{avatarFallback}</AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <CardTitle>
+                      {intra.displayname ?? "Profil Intra"}
+                    </CardTitle>
+                    <CardDescription>@{intra.login}</CardDescription>
+                    <p className="text-sm text-muted-foreground">
+                      {intra.location ?? "Non connecté"}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                      <p><strong>{followingCount}</strong> abonnements</p>
+                      <p><strong>{followersCount}</strong> abonnés</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  {isEditingBio ? (
+                    <FieldGroup>
+                      <Field>
+                        <Textarea
+                          value={bioDraft}
+                          onChange={(event) => setBioDraft(event.target.value)}
+                          maxLength={500}
+                          aria-label="Modifier ma bio"
+                          disabled={updateBioRequest.isPending}
+                        />
+                        <FieldDescription>
+                          {bioDraft.length}/500 caractères
+                        </FieldDescription>
+                        <FieldError>
+                          {getApiErrorMessage(updateBioRequest.error)}
+                        </FieldError>
+                      </Field>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={saveBio}
+                          disabled={updateBioRequest.isPending}
+                        >
+                          {updateBioRequest.isPending
+                            ? "Enregistrement…"
+                            : "Enregistrer"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={cancelBioEdition}
+                          disabled={updateBioRequest.isPending}
+                        >
+                          Annuler
+                        </Button>
+                      </div>
+                    </FieldGroup>
+                  ) : (
+                    <div className="flex max-w-2xl items-start gap-2">
+                      <p className="flex-1 text-sm text-muted-foreground">
+                        {bioText}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={startBioEdition}
+                      >
+                        <Pencil />
+                        <span className="sr-only">Modifier ma bio</span>
+                      </Button>
+                    </div>
+                  )}
+                  <div className="max-w-sm">
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span>Niveau {currentCursus?.level?.toFixed(2) ?? "—"}</span>
+                      <span className="text-muted-foreground">
+                        {levelProgress} %
+                      </span>
+                    </div>
+                    <Progress value={levelProgress} className="h-3" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {currentCampus?.name ?? "Campus non renseigné"}
+                    {currentCursus?.name ? ` · ${currentCursus.name}` : ""}
+                    {currentCursus?.grade ? ` · ${currentCursus.grade}` : ""}
+                    {currentCursus?.end_at
+                      ? ` · Fin du cursus : ${formatDateOnly(currentCursus.end_at)}`
+                      : ""}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <IntraStatsCards
+              blackholedAt={currentCursus?.blackholed_at}
+              wallet={intra.wallet}
+              correctionPoints={intra.correction_point}
+              isUnavailable={intraRequest.isError && !isPreview}
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users />
+                  Amis en ligne
+                </CardTitle>
+                <CardDescription>
+                  {onlineFriends.length} ami
+                  {onlineFriends.length > 1 ? "s" : ""} connecté
+                  {onlineFriends.length > 1 ? "s" : ""}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {onlineFriendsRequest.isPending && !isPreview ? (
+                  <p className="text-sm text-muted-foreground">
+                    Chargement des amis en ligne…
+                  </p>
+                ) : onlineFriendsRequest.isError && !isPreview ? (
+                  <p className="text-sm text-muted-foreground">
+                    Les amis en ligne sont temporairement indisponibles.
+                  </p>
+                ) : onlineFriends.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun ami n’est en ligne actuellement.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-4">
+                    {onlineFriends.map((friend) => (
+                      <li key={friend.id} className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar className="size-10">
+                            <AvatarImage
+                              src={friend.avatar_url ?? undefined}
+                              alt={`Photo de ${friend.login}`}
+                            />
+                            <AvatarFallback>
+                              {friend.login.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="absolute right-0 bottom-0 size-3 rounded-full border-2 border-card bg-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {friend.display_name ?? friend.login}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            @{friend.login}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardCheck />
+                  Prochaines évaluations
+                </CardTitle>
+                <CardDescription>Les cinq prochaines évaluations.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {evaluationsRequest.isPending && !isPreview ? (
+                  <p className="text-sm text-muted-foreground">
+                    Chargement des évaluations…
+                  </p>
+                ) : evaluationsRequest.isError && !isPreview ? (
+                  <p className="text-sm text-muted-foreground">
+                    Les évaluations sont temporairement indisponibles.
+                  </p>
+                ) : evaluations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucune évaluation à venir.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-4">
+                    {evaluations.map((evaluation) => (
+                      <li key={evaluation.id}>
+                        <p className="font-medium">
+                          {evaluation.project_name ?? "Projet non renseigné"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(evaluation.begin_at)} ·{" "}
+                          {evaluation.role === "corrected"
+                            ? "Évalué"
+                            : "Correcteur"}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays />
+                  Prochains événements
+                </CardTitle>
+                <CardDescription>Les cinq prochains événements.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {eventsRequest.isPending && !isPreview ? (
+                  <p className="text-sm text-muted-foreground">
+                    Chargement des événements…
+                  </p>
+                ) : eventsRequest.isError && !isPreview ? (
+                  <p className="text-sm text-muted-foreground">
+                    Les événements sont temporairement indisponibles.
+                  </p>
+                ) : events.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun événement à venir.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-4">
+                    {events.map((event) => (
+                      <li key={event.id}>
+                        <p className="font-medium">{event.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(event.begin_at)}
+                          {event.location ? ` · ${event.location}` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="max-w-[28rem]">
+            <LogtimeCard
+              logtime={logtime}
+              month={selectedMonth}
+              isCurrentMonth={isCurrentMonth}
+              isLoading={logtimeRequest.isPending && !isPreview}
+              isError={logtimeRequest.isError && !isPreview}
+              onPreviousMonth={() => changeMonth(-1)}
+              onNextMonth={() => changeMonth(1)}
+            />
+          </div>
+        </>
       )}
     </section>
   )

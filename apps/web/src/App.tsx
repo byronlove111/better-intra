@@ -5,12 +5,18 @@ import { AppLayout } from "@/layouts/AppLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
+import { ProfilePage } from "@/pages/ProfilePage"
 import { RegisterPage } from "@/pages/RegisterPage"
 
 function RootRedirect() {
   const location = useLocation()
+  const preview = new URLSearchParams(location.search).get("preview")
+  const hasPreview = preview === "dashboard" || preview === "profile"
+  const previewUrl = import.meta.env.DEV && hasPreview
+    ? "?preview=dashboard"
+    : ""
 
-  return <Navigate to={`/dashboard${location.search}`} replace />
+  return <Navigate to={`/dashboard${previewUrl}`} replace />
 }
 
 function App() {
@@ -23,6 +29,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:login" element={<ProfilePage />} />
         </Route>
       </Route>
 
