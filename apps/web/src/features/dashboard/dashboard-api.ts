@@ -48,6 +48,11 @@ export type IntraEvaluation = {
 
 type EvaluationsResponse = {
   items: IntraEvaluation[]
+  meta: {
+    page: number
+    page_size: number
+    total: number | null
+  }
 }
 
 export type OnlineFriend = {
@@ -79,9 +84,9 @@ export async function getDashboardEvents() {
 }
 
 export async function getDashboardEvaluations() {
-  const evaluations = await getEvaluationsPage(1, 30)
+  const response = await getEvaluationsPage(1, 30)
 
-  return evaluations
+  return response.items
     .filter((evaluation) =>
       evaluation.begin_at
         ? new Date(evaluation.begin_at).getTime() >= Date.now()
@@ -93,12 +98,14 @@ export async function getDashboardEvaluations() {
     .slice(0, 5)
 }
 
-export async function getEvaluationsPage(page: number, pageSize: number) {
-  const response = await apiRequest<EvaluationsResponse>(
-    `/me/intra/evaluations?page=${page}&page_size=${pageSize}`,
+export async function getEvaluationsPage(
+  page: number,
+  pageSize: number,
+  role: "all" | "corrector" | "corrected" = "all",
+) {
+  return apiRequest<EvaluationsResponse>(
+    `/me/intra/evaluations?role=${role}&page=${page}&page_size=${pageSize}`,
   )
-
-  return response.items
 }
 
 export async function getDashboardOnlineFriends() {

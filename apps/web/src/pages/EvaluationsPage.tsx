@@ -3,7 +3,7 @@ import { ClipboardCheck } from "lucide-react"
 import { Fragment, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { Button } from "@/components/ui/button"
+import { PagePagination } from "@/components/PagePagination"
 import {
   Card,
   CardContent,
@@ -47,25 +47,25 @@ export function EvaluationsPage() {
   })
 
   const evaluationsRequest = useQuery({
-    queryKey: ["evaluations", page],
-    queryFn: () => getEvaluationsPage(page, PAGE_SIZE),
+    queryKey: ["evaluations", view, page],
+    queryFn: () => getEvaluationsPage(page, PAGE_SIZE, view),
     enabled: !isPreview && currentUserRequest.data?.is_intra_linked === true,
   })
 
   const evaluations = isPreview
     ? previewEvaluations
-    : (evaluationsRequest.data ?? [])
+    : (evaluationsRequest.data?.items ?? [])
   const error = getApiErrorMessage(evaluationsRequest.error)
-  const canGoNext = !isPreview && evaluations.length === PAGE_SIZE
-  const givenEvaluations = evaluations.filter(
-    (evaluation) => evaluation.role === "corrector",
-  )
-  const receivedEvaluations = evaluations.filter(
-    (evaluation) => evaluation.role === "corrected",
-  )
-  const visibleEvaluations = view === "corrector"
-    ? givenEvaluations
-    : receivedEvaluations
+  const pagination = evaluationsRequest.data?.meta
+  const totalPages = isPreview
+    ? 1
+    : Math.max(
+        1,
+        Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
+      )
+  const visibleEvaluations = isPreview
+    ? evaluations.filter((evaluation) => evaluation.role === view)
+    : evaluations
 
   if (!isPreview && currentUserRequest.data?.is_intra_linked === false) {
     return (
@@ -112,6 +112,7 @@ export function EvaluationsPage() {
           const selectedView = values[0]
 
           if (selectedView === "corrector" || selectedView === "corrected") {
+            setPage(1)
             setView(selectedView)
           }
         }}
@@ -202,25 +203,12 @@ export function EvaluationsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((currentPage) => currentPage - 1)}
-          disabled={page === 1 || evaluationsRequest.isPending}
-        >
-          Précédent
-        </Button>
-        <span className="text-sm text-muted-foreground">Page {page}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((currentPage) => currentPage + 1)}
-          disabled={!canGoNext || evaluationsRequest.isPending}
-        >
-          Suivant
-        </Button>
-      </div>
+      <PagePagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        disabled={isPreview || evaluationsRequest.isPending}
+      />
     </section>
   )
 }

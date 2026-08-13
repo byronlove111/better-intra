@@ -3,8 +3,8 @@ import { FolderKanban } from "lucide-react"
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { PagePagination } from "@/components/PagePagination"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -71,9 +71,17 @@ export function ProjectsPage() {
     enabled: !isPreview && currentUserRequest.data?.is_intra_linked === true,
   })
 
-  const projects = isPreview ? previewProjects : (projectsRequest.data ?? [])
+  const projects = isPreview
+    ? previewProjects
+    : (projectsRequest.data?.items ?? [])
   const error = getApiErrorMessage(projectsRequest.error)
-  const canGoNext = !isPreview && projects.length === PAGE_SIZE
+  const pagination = projectsRequest.data?.meta
+  const totalPages = isPreview
+    ? 1
+    : Math.max(
+        1,
+        Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
+      )
 
   if (!isPreview && currentUserRequest.data?.is_intra_linked === false) {
     return (
@@ -153,24 +161,13 @@ export function ProjectsPage() {
         )}
       </CardContent>
 
-      <CardFooter className="justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((currentPage) => currentPage - 1)}
-          disabled={page === 1 || projectsRequest.isPending}
-        >
-          Précédent
-        </Button>
-        <span className="text-sm text-muted-foreground">Page {page}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((currentPage) => currentPage + 1)}
-          disabled={!canGoNext || projectsRequest.isPending}
-        >
-          Suivant
-        </Button>
+      <CardFooter className="justify-center">
+        <PagePagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          disabled={isPreview || projectsRequest.isPending}
+        />
       </CardFooter>
     </Card>
   )

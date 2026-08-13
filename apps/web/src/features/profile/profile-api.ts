@@ -55,6 +55,11 @@ export type ProfileProject = {
 
 type ProjectsResponse = {
   items: ProfileProject[]
+  meta: {
+    page: number
+    page_size: number
+    total: number | null
+  }
 }
 
 type MyLogtimeResponse = ProfileLogtime
@@ -99,11 +104,9 @@ export async function getProfileProjects(login: string | undefined) {
 }
 
 export async function getMyProjectsPage(page: number, pageSize: number) {
-  const response = await apiRequest<ProjectsResponse>(
+  return apiRequest<ProjectsResponse>(
     `/me/intra/projects?page=${page}&page_size=${pageSize}`,
   )
-
-  return response.items
 }
 
 export async function getProfileLogtime(
