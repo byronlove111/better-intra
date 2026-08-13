@@ -153,7 +153,7 @@ Le `.env` à la racine (copié depuis `.env.example`, jamais committé) est lu a
 
 ## Intégration continue (GitHub Actions)
 
-Le job `backend-tests` tourne sur chaque PR vers `main` et chaque push sur `main`. Détail du workflow: [`.github/README.md`](../.github/README.md).
+Le job `backend-tests` tourne sur chaque PR vers `main` et chaque push sur `main`. Détail du workflow: [`.github/workflows/README.md`](../.github/workflows/README.md).
 
 Le rejouer en local : `make ci-backend`.
 

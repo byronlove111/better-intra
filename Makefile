@@ -25,7 +25,7 @@ help:
 	@echo "  make certs    - (re)genere le certificat self-signed du proxy nginx"
 	@echo "  make db-ui    - lance Adminer sur http://localhost:8081 (visualiseur de tables)"
 	@echo "  make db-ui-down - stoppe Adminer"
-	@echo "  make ci-backend - rejoue en local le job CI des tests backend (cf. .github/README.md)"
+	@echo "  make ci-backend - rejoue en local le job CI des tests backend (cf. .github/workflows/README.md)"
 
 # Certif self-signed local pour nginx tls:
 # généré une fois sur l'hôte via openssl, jamais committé (.gitignore),

@@ -116,7 +116,7 @@ uv run pytest -q
 Override DB: `TEST_DATABASE_URL=postgresql+psycopg://… uv run pytest -q`
 
 `make ci-backend` runs the same suite against a throwaway container (needs `uv`).
-Same commands as the CI job — see [`.github/README.md`](.github/README.md).
+Same commands as the CI job — see [`.github/workflows/README.md`](.github/workflows/README.md).
 
 ## Environment
 
