@@ -87,15 +87,30 @@ export async function getDashboardEvaluations() {
   const response = await getEvaluationsPage(1, 30)
 
   return response.items
-    .filter((evaluation) =>
-      evaluation.begin_at
-        ? new Date(evaluation.begin_at).getTime() >= Date.now()
-        : false,
-    )
+    .filter((evaluation) => {
+      if (!evaluation.begin_at) return false
+
+      const isUpcoming =
+        new Date(evaluation.begin_at).getTime() >= Date.now()
+
+      return isUpcoming || isCorrectionToFinalize(evaluation)
+    })
     .sort((first, second) =>
       new Date(first.begin_at!).getTime() - new Date(second.begin_at!).getTime(),
     )
     .slice(0, 5)
+}
+
+export function isCorrectionToFinalize(evaluation: IntraEvaluation) {
+  if (
+    evaluation.role !== "corrector"
+    || evaluation.comment?.trim()
+    || !evaluation.begin_at
+  ) {
+    return false
+  }
+
+  return new Date(evaluation.begin_at).getTime() < Date.now()
 }
 
 export async function getEvaluationsPage(

@@ -160,7 +160,7 @@ export function EvaluationsPage() {
               <TableBody>
                 {visibleEvaluations.map((evaluation) => (
                   <Fragment key={evaluation.id}>
-                    
+                    <TableRow className="border-b-0">
                       <TableCell className="py-4">
                         {evaluation.corrector_login ?? "—"}
                       </TableCell>
@@ -173,7 +173,7 @@ export function EvaluationsPage() {
                       <TableCell className="py-4">
                         {formatDate(evaluation.begin_at)}
                       </TableCell>
-                    
+                    </TableRow>
                     <TableRow>
                       <TableCell colSpan={4} className="whitespace-normal pt-2 pb-6">
                         <div className="flex flex-col gap-2">

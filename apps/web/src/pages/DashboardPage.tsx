@@ -15,6 +15,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -41,6 +42,7 @@ import {
   getDashboardEvents,
   getDashboardLogtime,
   getDashboardOnlineFriends,
+  isCorrectionToFinalize,
 } from "@/features/dashboard/dashboard-api"
 import { dashboardPreview } from "@/features/dashboard/dashboard-preview"
 import {
@@ -461,7 +463,9 @@ export function DashboardPage() {
                   <ClipboardCheck />
                   Prochaines évaluations
                 </CardTitle>
-                <CardDescription>Les cinq prochaines évaluations.</CardDescription>
+                <CardDescription>
+                  Les cinq prochaines évaluations ou corrections à finaliser.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {evaluationsRequest.isPending && !isPreview ? (
@@ -474,23 +478,39 @@ export function DashboardPage() {
                   </p>
                 ) : evaluations.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Aucune évaluation à venir.
+                    Aucune évaluation à venir ou à finaliser.
                   </p>
                 ) : (
                   <ul className="flex flex-col gap-4">
-                    {evaluations.map((evaluation) => (
-                      <li key={evaluation.id}>
-                        <p className="font-medium">
-                          {evaluation.project_name ?? "Projet non renseigné"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(evaluation.begin_at)} ·{" "}
-                          {evaluation.role === "corrected"
-                            ? "Évalué"
-                            : "Correcteur"}
-                        </p>
-                      </li>
-                    ))}
+                    {evaluations.map((evaluation) => {
+                      const isToFinalize =
+                        isCorrectionToFinalize(evaluation)
+                      let evaluationStatus = "À corriger"
+
+                      if (evaluation.role === "corrected") {
+                        evaluationStatus = "À faire évaluer"
+                      }
+
+                      if (isToFinalize) {
+                        evaluationStatus = "À finaliser"
+                      }
+
+                      return (
+                        <li key={evaluation.id}>
+                          <p className="font-medium">
+                            {evaluation.project_name ?? "Projet non renseigné"}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <span>{formatDate(evaluation.begin_at)}</span>
+                            <Badge
+                              variant={isToFinalize ? "secondary" : "outline"}
+                            >
+                              {evaluationStatus}
+                            </Badge>
+                          </div>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </CardContent>
