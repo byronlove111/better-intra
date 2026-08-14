@@ -18,14 +18,16 @@ import { cn } from "@/lib/utils"
 type LogtimeCardProps = {
   logtime?: LogtimeData
   month: Date
-  isCurrentMonth: boolean
+  isCurrentMonth?: boolean
   isLoading?: boolean
   isError?: boolean
   isActivated?: boolean
   canActivate?: boolean
   onActivate?: () => void
-  onPreviousMonth: () => void
-  onNextMonth: () => void
+  onPreviousMonth?: () => void
+  onNextMonth?: () => void
+  summaryLabel?: string
+  showMonthNavigation?: boolean
 }
 
 export function LogtimeCard({
@@ -39,6 +41,8 @@ export function LogtimeCard({
   onActivate,
   onPreviousMonth,
   onNextMonth,
+  summaryLabel = "ce mois-ci",
+  showMonthNavigation = true,
 }: LogtimeCardProps) {
   const monthLabel = new Intl.DateTimeFormat("fr-FR", {
     month: "long",
@@ -79,22 +83,26 @@ export function LogtimeCard({
             Logtime
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" onClick={onPreviousMonth}>
-              <ChevronLeft />
-              <span className="sr-only">Mois précédent</span>
-            </Button>
+            {showMonthNavigation && (
+              <Button variant="ghost" size="icon-sm" onClick={onPreviousMonth}>
+                <ChevronLeft />
+                <span className="sr-only">Mois précédent</span>
+              </Button>
+            )}
             <span className="min-w-28 text-center text-sm font-medium capitalize">
               {monthLabel}
             </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onNextMonth}
-              disabled={isCurrentMonth}
-            >
-              <ChevronRight />
-              <span className="sr-only">Mois suivant</span>
-            </Button>
+            {showMonthNavigation && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onNextMonth}
+                disabled={isCurrentMonth}
+              >
+                <ChevronRight />
+                <span className="sr-only">Mois suivant</span>
+              </Button>
+            )}
           </div>
         </div>
         <CardDescription>
@@ -102,7 +110,7 @@ export function LogtimeCard({
             ? "Chargement du logtime…"
             : isError
               ? "Logtime temporairement indisponible"
-              : `${logtime?.total_hours ?? 0} h ce mois-ci · ${logtime?.active_days ?? 0} jours actifs`}
+              : `${logtime?.total_hours ?? 0} h ${summaryLabel} · ${logtime?.active_days ?? 0} jours actifs`}
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -5,6 +5,7 @@ import { AppLayout } from "@/layouts/AppLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { EvaluationsPage } from "@/pages/EvaluationsPage"
 import { LoginPage } from "@/pages/LoginPage"
+import { LogtimePage } from "@/pages/LogtimePage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { ProfilePage } from "@/pages/ProfilePage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
@@ -35,6 +36,7 @@ function App() {
           <Route path="/profile/:login" element={<ProfilePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />
+          <Route path="/logtime" element={<LogtimePage />} />
         </Route>
       </Route>
 

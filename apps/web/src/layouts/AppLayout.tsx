@@ -5,6 +5,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   LogOut,
+  Timer,
   UserRound,
 } from "lucide-react"
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
@@ -48,6 +49,7 @@ export function AppLayout() {
       || preview === "profile"
       || preview === "projects"
       || preview === "evaluations"
+      || preview === "logtime"
     )
   const currentUser = queryClient.getQueryData<AuthUser>(["auth", "me"])
   const notificationsRequest = useQuery({
@@ -88,7 +90,7 @@ export function AppLayout() {
           </Button>
         </div>
 
-        <nav className="flex gap-2 px-4 pb-4 md:flex-col md:pb-0">
+        <nav className="flex gap-2 overflow-x-auto px-4 pb-4 md:flex-col md:overflow-visible md:pb-0">
           <NavLink
             to={isPreview ? "/dashboard?preview=dashboard" : "/dashboard"}
             className={({ isActive }) =>
@@ -146,6 +148,20 @@ export function AppLayout() {
           >
             <ClipboardCheck />
             Évaluations
+          </NavLink>
+          <NavLink
+            to={isPreview ? "/logtime?preview=logtime" : "/logtime"}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+                isActive
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )
+            }
+          >
+            <Timer />
+            Logtime
           </NavLink>
         </nav>
 

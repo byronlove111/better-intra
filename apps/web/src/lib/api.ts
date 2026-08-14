@@ -90,6 +90,38 @@ export async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
+export async function apiDownload(
+  path: string,
+  retryOnUnauthorized = true,
+): Promise<Blob> {
+  const accessToken = getAccessToken()
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: accessToken
+      ? { Authorization: `Bearer ${accessToken}` }
+      : undefined,
+  })
+
+  if (response.status === 401 && retryOnUnauthorized) {
+    try {
+      await refreshTokens()
+      return apiDownload(path, false)
+    } catch {
+      clearTokens()
+    }
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorBody
+
+    throw new ApiError(
+      response.status,
+      body.detail ?? "Une erreur est survenue",
+    )
+  }
+
+  return response.blob()
+}
+
 async function refreshTokens() {
   if (refreshPromise) {
     return refreshPromise

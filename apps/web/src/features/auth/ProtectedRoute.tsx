@@ -16,6 +16,7 @@ export function ProtectedRoute() {
     || (location.pathname.startsWith("/profile") && preview === "profile")
     || (location.pathname === "/projects" && preview === "projects")
     || (location.pathname === "/evaluations" && preview === "evaluations")
+    || (location.pathname === "/logtime" && preview === "logtime")
   )
 
   const currentUserQuery = useQuery({
