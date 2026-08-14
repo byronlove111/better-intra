@@ -151,8 +151,8 @@ export function EvaluationsPage() {
               <TableHeader className="[&_tr]:border-b-2">
                 <TableRow>
                   <TableHead>Correcteur</TableHead>
-                  {/* TODO: utiliser team_name à la place de project_name après le correctif backend. */}
                   <TableHead>Groupe évalué</TableHead>
+                  <TableHead>Projet</TableHead>
                   <TableHead>Élèves évalués</TableHead>
                   <TableHead>Date</TableHead>
                 </TableRow>
@@ -165,7 +165,10 @@ export function EvaluationsPage() {
                         {evaluation.corrector_login ?? "—"}
                       </TableCell>
                       <TableCell className="py-4 font-medium">
-                        {evaluation.project_name ?? "Groupe non renseigné"}
+                        {evaluation.team_name ?? "Groupe non renseigné"}
+                      </TableCell>
+                      <TableCell className="py-4">
+                        {evaluation.project_name ?? "Projet non renseigné"}
                       </TableCell>
                       <TableCell className="py-4">
                         {evaluation.corrected_logins.join(", ") || "—"}
@@ -175,7 +178,7 @@ export function EvaluationsPage() {
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell colSpan={4} className="whitespace-normal pt-2 pb-6">
+                      <TableCell colSpan={5} className="whitespace-normal pt-2 pb-6">
                         <div className="flex flex-col gap-2">
                           <p>
                             <strong>
@@ -185,13 +188,23 @@ export function EvaluationsPage() {
                             </strong>{" "}
                             {evaluation.comment ?? "Aucun commentaire de correction."}
                           </p>
-                          <p className="text-muted-foreground">
-                            {evaluation.feedback_rating !== undefined
-                            && evaluation.feedback_rating !== null
-                              ? `${evaluation.feedback_rating}/5`
-                              : "Avis évaluateur indisponible"}{" "}
-                            {evaluation.feedback_comment ?? ""}
-                          </p>
+                          {evaluation.feedbacks.length === 0 ? (
+                            <p className="text-muted-foreground">
+                              Avis évaluateur indisponible
+                            </p>
+                          ) : (
+                            evaluation.feedbacks.map((feedback, index) => (
+                              <p
+                                key={`${evaluation.id}-feedback-${index}`}
+                                className="text-muted-foreground"
+                              >
+                                {feedback.rating !== null
+                                  ? `${feedback.rating}/5`
+                                  : "Avis sans note"}{" "}
+                                {feedback.comment ?? ""}
+                              </p>
+                            ))
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

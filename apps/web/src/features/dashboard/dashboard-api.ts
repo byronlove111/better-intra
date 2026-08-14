@@ -32,6 +32,18 @@ export async function getNotifications() {
   return response.items
 }
 
+type IntraEvaluationFeedbackDetail = {
+  kind: string | null
+  rate: number | null
+}
+
+type IntraEvaluationFeedback = {
+  from_login: string | null
+  rating: number | null
+  comment: string | null
+  details: IntraEvaluationFeedbackDetail[]
+}
+
 export type IntraEvaluation = {
   id: number
   role: "corrector" | "corrected"
@@ -39,11 +51,12 @@ export type IntraEvaluation = {
   final_mark: number | null
   comment: string | null
   project_name: string | null
+  project_slug: string | null
+  project_id: number | null
+  team_name: string | null
   corrector_login: string | null
   corrected_logins: string[]
-  // Ces champs seront affichés si le backend expose le feedback sur l'évaluateur.
-  feedback_rating?: number | null
-  feedback_comment?: string | null
+  feedbacks: IntraEvaluationFeedback[]
 }
 
 type EvaluationsResponse = {
