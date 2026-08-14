@@ -64,16 +64,42 @@ class IntraEventOut(BaseModel):
     cursus_ids: list[int] = Field(default_factory=list)
 
 
+class IntraEvaluationFeedbackDetailOut(BaseModel):
+    kind: str | None = None
+    rate: int | None = None
+
+
+class IntraEvaluationFeedbackOut(BaseModel):
+    """Note que l'évalué donne à l'évaluateur (Intra feedbacks on the scale_team)."""
+
+    from_login: str | None = None
+    rating: int | None = Field(default=None, description="Overall rating (typically 0–5)")
+    comment: str | None = None
+    details: list[IntraEvaluationFeedbackDetailOut] = Field(
+        default_factory=list,
+        description="Per-kind rates (nice, rigorous, interested, punctuality, …)",
+    )
+
+
 class IntraEvaluationOut(BaseModel):
     id: int
     role: Literal["corrector", "corrected"]
     begin_at: datetime | None = None
     final_mark: int | None = None
-    comment: str | None = None
+    comment: str | None = Field(default=None, description="Corrector's comment on the defence")
     project_name: str | None = None
     project_slug: str | None = None
+    project_id: int | None = None
     corrector_login: str | None = None
     corrected_logins: list[str] = Field(default_factory=list)
+    feedbacks: list[IntraEvaluationFeedbackOut] = Field(
+        default_factory=list,
+        description=(
+            "Feedbacks from corrected users toward the corrector "
+            "(rating + comment from the scale_teams list payload; "
+            "per-kind details are often empty unless fetched separately)."
+        ),
+    )
 
 
 class IntraLocationSessionOut(BaseModel):

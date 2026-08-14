@@ -252,14 +252,57 @@ def build_event(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _slug_from_gitlab_path(path: str | None) -> str | None:
+    """Last segment of e.g. pedago_world/42-cursus/inner-circle/ft_irc → ft_irc."""
+    if not path or not isinstance(path, str):
+        return None
+    segment = path.rstrip("/").split("/")[-1].strip()
+    return segment or None
+
+
 def _team_project_name(team: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    """Resolve project name/slug from a scale_team.team payload.
+
+    42's nested ``team.project`` is usually absent on scale_teams; ``team.name`` is the
+    *team* name (e.g. \"zmata's team\"), not the project. Prefer nested project, then
+    ``project_gitlab_path`` last segment — never fall back to ``team.name``.
+    """
     if not team:
         return None, None
-    project_gitlab = team.get("project_gitlab_path")
-    name = team.get("name") or project_gitlab
-    # Prefer nested project if present on some payloads
     project = team.get("project") or {}
-    return project.get("name") or name, project.get("slug")
+    if isinstance(project, dict) and (project.get("name") or project.get("slug")):
+        slug = project.get("slug") or _slug_from_gitlab_path(team.get("project_gitlab_path"))
+        return project.get("name") or slug, slug
+
+    slug = _slug_from_gitlab_path(team.get("project_gitlab_path"))
+    return slug, slug
+
+
+def _build_evaluation_feedbacks(item: dict[str, Any]) -> list[dict[str, Any]]:
+    """Ratings/comments from corrected → corrector (already on the scale_team payload)."""
+    raw = item.get("feedbacks")
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for fb in raw:
+        if not isinstance(fb, dict):
+            continue
+        user = fb.get("user") or {}
+        details_raw = fb.get("feedback_details") or []
+        details = [
+            {"kind": d.get("kind"), "rate": d.get("rate")}
+            for d in details_raw
+            if isinstance(d, dict) and d.get("kind") is not None
+        ]
+        out.append(
+            {
+                "from_login": user.get("login") if isinstance(user, dict) else None,
+                "rating": fb.get("rating"),
+                "comment": fb.get("comment"),
+                "details": details,
+            }
+        )
+    return out
 
 
 def build_evaluation(item: dict[str, Any], *, role: str) -> dict[str, Any]:
@@ -275,8 +318,10 @@ def build_evaluation(item: dict[str, Any], *, role: str) -> dict[str, Any]:
         "comment": item.get("comment"),
         "project_name": project_name,
         "project_slug": project_slug,
+        "project_id": team.get("project_id"),
         "corrector_login": corrector.get("login"),
         "corrected_logins": [user.get("login") for user in corrected if user.get("login")],
+        "feedbacks": _build_evaluation_feedbacks(item),
     }
 
 
