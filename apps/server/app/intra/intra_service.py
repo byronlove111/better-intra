@@ -319,6 +319,7 @@ def build_evaluation(item: dict[str, Any], *, role: str) -> dict[str, Any]:
         "project_name": project_name,
         "project_slug": project_slug,
         "project_id": team.get("project_id"),
+        "team_name": team.get("name"),
         "corrector_login": corrector.get("login"),
         "corrected_logins": [user.get("login") for user in corrected if user.get("login")],
         "feedbacks": _build_evaluation_feedbacks(item),

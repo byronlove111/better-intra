@@ -90,6 +90,7 @@ class IntraEvaluationOut(BaseModel):
     project_name: str | None = None
     project_slug: str | None = None
     project_id: int | None = None
+    team_name: str | None = Field(default=None, description="Intra team name (not the project)")
     corrector_login: str | None = None
     corrected_logins: list[str] = Field(default_factory=list)
     feedbacks: list[IntraEvaluationFeedbackOut] = Field(

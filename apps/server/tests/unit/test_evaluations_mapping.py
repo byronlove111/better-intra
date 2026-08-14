@@ -57,6 +57,7 @@ def test_build_evaluation_includes_feedbacks() -> None:
     assert out["project_name"] == "ft_irc"
     assert out["project_slug"] == "ft_irc"
     assert out["project_id"] == 1336
+    assert out["team_name"] == "zmata's team"
     assert out["corrector_login"] == "ibaaziz"
     assert out["feedbacks"] == [
         {
