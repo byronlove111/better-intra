@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { AppLayout } from "@/layouts/AppLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { EvaluationsPage } from "@/pages/EvaluationsPage"
+import { FriendsPage } from "@/pages/FriendsPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { LogtimePage } from "@/pages/LogtimePage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
@@ -36,6 +37,7 @@ function App() {
           <Route path="/profile/:login" element={<ProfilePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />
+          <Route path="/friends" element={<FriendsPage />} />
           <Route path="/logtime" element={<LogtimePage />} />
         </Route>
       </Route>

@@ -16,6 +16,7 @@ export function ProtectedRoute() {
     || (location.pathname.startsWith("/profile") && preview === "profile")
     || (location.pathname === "/projects" && preview === "projects")
     || (location.pathname === "/evaluations" && preview === "evaluations")
+    || (location.pathname === "/friends" && preview === "friends")
     || (location.pathname === "/logtime" && preview === "logtime")
   )
 

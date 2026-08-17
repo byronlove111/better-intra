@@ -85,7 +85,7 @@ export function UserSearch({ isPreview, canSearch }: UserSearchProps) {
           setQuery("")
         }
       }}
-      itemToStringValue={(user: IntraUser) => user.login}
+      itemToStringLabel={(user: IntraUser) => user.login}
     >
       <ComboboxInput
         className="w-full"

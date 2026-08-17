@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { FolderKanban } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -13,16 +14,20 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import type { AuthUser } from "@/features/auth/auth-api"
 import { IntraStatsCards } from "@/features/profile/IntraStatsCards"
 import { LogtimeCard } from "@/features/profile/LogtimeCard"
 import {
+  type FriendStats,
   type ProfileProject,
+  followUser,
   getMyFriendStats,
   getMyProfile,
   getProfileLogtime,
   getProfileProjects,
   getUserFriendStats,
   getUserProfile,
+  unfollowUser,
 } from "@/features/profile/profile-api"
 import {
   formatDateOnly,
@@ -62,15 +67,20 @@ function getProjectStatus(project: ProfileProject): ProjectStatus {
 export function ProfilePage() {
   const { login } = useParams()
   const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const isPreview =
     import.meta.env.DEV && searchParams.get("preview") === "profile"
-  const isOwnProfile = !login
+  const currentUser = queryClient.getQueryData<AuthUser>(["auth", "me"])
+  const currentLogin = isPreview ? "swann" : currentUser?.login
+  const isOwnProfile =
+    !login || login.toLowerCase() === currentLogin?.toLowerCase()
   const profileKey = login ?? "me"
   const [selectedMonth, setSelectedMonth] = useState(
     () => new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)),
   )
   const [projectsReadyFor, setProjectsReadyFor] = useState<string | null>(null)
   const [logtimeProfile, setLogtimeProfile] = useState<string | null>(null)
+  const [previewFollowing, setPreviewFollowing] = useState(false)
   const monthRange = getMonthRange(selectedMonth)
   const profileRequest = useQuery({
     queryKey: ["profile", profileKey],
@@ -94,6 +104,41 @@ export function ProfilePage() {
     queryFn: () => login ? getUserFriendStats(login) : getMyFriendStats(),
     enabled: !isPreview && hasLoadedIntraProfile,
   })
+
+  const followRequest = useMutation({
+    mutationFn: (shouldFollow: boolean) => {
+      if (!login) {
+        throw new Error("Profil invalide")
+      }
+
+      return shouldFollow ? followUser(login) : unfollowUser(login)
+    },
+    onSuccess: (_, shouldFollow) => {
+      queryClient.setQueryData<FriendStats>(
+        ["friends", "stats", profileKey],
+        (stats) => stats
+          ? {
+              ...stats,
+              is_following: shouldFollow,
+              followers_count: Math.max(
+                0,
+                stats.followers_count + (shouldFollow ? 1 : -1),
+              ),
+            }
+          : stats,
+      )
+      queryClient.invalidateQueries({ queryKey: ["friends", "following"] })
+      queryClient.invalidateQueries({ queryKey: ["friends", "stats", "me"] })
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "online-friends"],
+      })
+    },
+  })
+  const resetFollowRequest = followRequest.reset
+
+  useEffect(() => {
+    resetFollowRequest()
+  }, [login, resetFollowRequest])
 
   const logtimeRequest = useQuery({
     queryKey: ["profile", profileKey, "logtime", monthRange.beginAt],
@@ -138,6 +183,9 @@ export function ProfilePage() {
     && selectedMonth.getUTCMonth() === currentMonth.getMonth()
   const isLogtimeActivated = isPreview || logtimeProfile === profileKey
   const avatarFallback = getInitials(profile.display_name ?? profile.login)
+  const isFollowing = isPreview
+    ? previewFollowing
+    : statsRequest.data?.is_following === true
   const statsUnavailable =
     !isPreview && (statsRequest.isPending || statsRequest.isError)
   const followingCount = statsUnavailable
@@ -148,8 +196,9 @@ export function ProfilePage() {
   const followersCount = statsUnavailable
     ? "—"
     : isPreview
-      ? 18
+      ? 18 + (previewFollowing ? 1 : 0)
       : (statsRequest.data?.followers_count ?? 0)
+  const followError = getApiErrorMessage(followRequest.error)
 
   let bioText = "Cet élève n’a pas encore ajouté de bio."
 
@@ -164,6 +213,16 @@ export function ProfilePage() {
       new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + offset, 1)),
     )
   }
+
+  function toggleFollow() {
+    if (isPreview) {
+      setPreviewFollowing((following) => !following)
+      return
+    }
+
+    followRequest.mutate(!isFollowing)
+  }
+
   return (
     <section className="flex flex-col gap-6">
       <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
@@ -178,20 +237,47 @@ export function ProfilePage() {
                 <AvatarFallback>{avatarFallback}</AvatarFallback>
               </Avatar>
 
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <CardTitle>{profile.display_name ?? "Profil BetterIntra"}</CardTitle>
-                <CardDescription>
-                  {profile.login ? `@${profile.login}` : profile.email}
-                </CardDescription>
-                {hasIntraProfile && (
-                  <p className="text-sm text-muted-foreground">
-                    {profile.intra?.location ?? "Non connecté"}
-                  </p>
-                )}
-                {hasIntraProfile && (
-                  <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                    <p><strong>{followingCount}</strong> abonnements</p>
-                    <p><strong>{followersCount}</strong> abonnés</p>
+              <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <CardTitle>{profile.display_name ?? "Profil BetterIntra"}</CardTitle>
+                  <CardDescription>
+                    {profile.login ? `@${profile.login}` : profile.email}
+                  </CardDescription>
+                  {hasIntraProfile && (
+                    <p className="text-sm text-muted-foreground">
+                      {profile.intra?.location ?? "Non connecté"}
+                    </p>
+                  )}
+                  {hasIntraProfile && (
+                    <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                      <p><strong>{followingCount}</strong> abonnements</p>
+                      <p><strong>{followersCount}</strong> abonnés</p>
+                    </div>
+                  )}
+                </div>
+
+                {!isOwnProfile && hasIntraProfile && (
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <Button
+                      size="sm"
+                      variant={isFollowing ? "outline" : "default"}
+                      onClick={toggleFollow}
+                      disabled={
+                        followRequest.isPending
+                        || (!isPreview && statsRequest.isPending)
+                      }
+                    >
+                      {followRequest.isPending
+                        ? "Enregistrement…"
+                        : isFollowing
+                          ? "Se désabonner"
+                          : "S’abonner"}
+                    </Button>
+                    {followError && !isPreview && (
+                      <p role="alert" className="max-w-48 text-right text-xs text-destructive">
+                        {followError}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

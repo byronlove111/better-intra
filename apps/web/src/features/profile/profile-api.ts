@@ -35,6 +35,7 @@ export type UserProfile = {
 export type FriendStats = {
   following_count: number
   followers_count: number
+  is_following: boolean | null
 }
 
 export type ProfileLogtime = {
@@ -92,6 +93,18 @@ export function getUserFriendStats(login: string) {
   return apiRequest<FriendStats>(
     `/friends/${encodeURIComponent(login)}/stats`,
   )
+}
+
+export function followUser(login: string) {
+  return apiRequest(`/friends/${encodeURIComponent(login)}`, {
+    method: "POST",
+  })
+}
+
+export function unfollowUser(login: string) {
+  return apiRequest<void>(`/friends/${encodeURIComponent(login)}`, {
+    method: "DELETE",
+  })
 }
 
 export async function getProfileProjects(login: string | undefined) {

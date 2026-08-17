@@ -107,6 +107,7 @@ export const dashboardPreview: DashboardPreview = {
   friendStats: {
     following_count: 24,
     followers_count: 18,
+    is_following: null,
   },
   events: [
     {
