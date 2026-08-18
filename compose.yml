@@ -7,9 +7,9 @@ x-server-base: &server-base
   environment:
     DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
   # Bind mount dev pour le hot reload et le debug.
-  volumes:
-    - ./apps/server/app:/app/app
-    - ./apps/server/alembic:/app/alembic
+#  volumes:
+#    - ./apps/server/app:/app/app
+#    - ./apps/server/alembic:/app/alembic
 
 services:
   db:
@@ -36,17 +36,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
+  # Api Server
   backend:
     <<: *server-base
-    # --reload-dir remplace la racine surveillee par defaut (/app) : seul le code
-    # de l'API declenche un reload, plus les migrations que l'API n'importe pas.
-    command: ["--reload", "--reload-dir", "/app/app"]
-    ports:
-      # Publié pour du debug direct (curl, Swagger) pendant le dev, sur la
-      # loopback uniquement. Le navigateur, lui, doit toujours passer par
-      # https://localhost:8443 (proxy). Voir docs/deploiement.md.
-      - "127.0.0.1:8000:8000"
+    # --reload dans le cas ou on veut hotreload en dev
+#    command: ["--reload", "--reload-dir", "/app/app"]
+#    ports:
     restart: unless-stopped
     depends_on:
       db:
@@ -60,12 +55,11 @@ services:
       retries: 5
       start_period: 20s
 
-  # build Vite static avec un nginx dédié :dist/ → /usr/share/nginx/html.
-  # VITE_API_URL est figée au build (build arg), pas
-  # lue à l'exécution — d'où le "args:" ici plutôt qu'un "environment:".
+  # build Vite static :dist/ → /usr/share/nginx/html.
   web:
     build:
       context: ./apps/web
+      # VITE_API_URL est utilisee au build seulement.
       args:
         VITE_API_URL: ${VITE_API_URL:-https://localhost:8443/api}
     image: ${COMPOSE_PROJECT_NAME:-better-intra}-web
@@ -100,7 +94,7 @@ services:
       retries: 3
       start_period: 5s
 
-  # Outil de dev : visualiseur de tables.
+  # Outil de dev : visualiseur de tables. A retirer (test seeding)
   adminer:
     image: adminer:5
     profiles: ["tools"]
