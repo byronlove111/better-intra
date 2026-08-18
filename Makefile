@@ -16,7 +16,7 @@ CI_DB_URL_BASE := postgresql+psycopg://betterintra:betterintra@localhost
 
 help:
 	@echo "BetterIntra — commandes :"
-	@echo "  make up       - genere le certif HTTPS local si besoin, build et lance db+backend+proxy"
+	@echo "  make up       - genere le certif HTTPS local si besoin, build et lance db+backend+web+proxy"
 	@echo "  make down     - stoppe les containers (garde le volume Postgres)"
 	@echo "  make restart  - down puis up"
 	@echo "  make logs     - suit les logs de tous les services"
