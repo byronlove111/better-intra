@@ -4,6 +4,8 @@ import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { AppLayout } from "@/layouts/AppLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { EvaluationsPage } from "@/pages/EvaluationsPage"
+import { FriendsPage } from "@/pages/FriendsPage"
+import { ChatPage } from "@/pages/ChatPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { ProfilePage } from "@/pages/ProfilePage"
@@ -12,13 +14,25 @@ import { RegisterPage } from "@/pages/RegisterPage"
 
 function RootRedirect() {
   const location = useLocation()
-  const preview = new URLSearchParams(location.search).get("preview")
-  const hasPreview = preview === "dashboard" || preview === "profile"
-  const previewUrl = import.meta.env.DEV && hasPreview
-    ? "?preview=dashboard"
-    : ""
+  const params = new URLSearchParams(location.search)
+  const preview = params.get("preview")
+  const intra = params.get("intra")
+  const reason = params.get("reason")
 
-  return <Navigate to={`/dashboard${previewUrl}`} replace />
+  const next = new URLSearchParams()
+  if (import.meta.env.DEV && (preview === "dashboard" || preview === "profile")) {
+    next.set("preview", "dashboard")
+  }
+  // Preserve OAuth callback flags from GET /auth/callback → /?intra=...
+  if (intra === "linked" || intra === "error") {
+    next.set("intra", intra)
+  }
+  if (reason) {
+    next.set("reason", reason)
+  }
+
+  const qs = next.toString()
+  return <Navigate to={qs ? `/dashboard?${qs}` : "/dashboard"} replace />
 }
 
 function App() {
@@ -35,6 +49,9 @@ function App() {
           <Route path="/profile/:login" element={<ProfilePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />
+          <Route path="/friends" element={<FriendsPage />} />
+          <Route path="/conversations" element={<ChatPage />} />
+          <Route path="/conversations/:conversationId" element={<ChatPage />} />
         </Route>
       </Route>
 

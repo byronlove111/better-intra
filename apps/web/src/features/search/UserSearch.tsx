@@ -75,16 +75,18 @@ export function UserSearch({ isPreview, canSearch }: UserSearchProps) {
   return (
     <Combobox
       items={searchQuery.length >= 2 ? users : []}
+      value={null}
       inputValue={query}
       onInputValueChange={setQuery}
       onValueChange={(user) => {
-        if (user) {
-          navigate(
-            `/profile/${encodeURIComponent(user.login)}${isPreview ? "?preview=profile" : ""}`,
-          )
-          setQuery("")
-        }
+        if (!user) return
+        navigate(
+          `/profile/${encodeURIComponent(user.login)}${isPreview ? "?preview=profile" : ""}`,
+        )
+        setQuery("")
+        setSearchQuery("")
       }}
+      itemToStringLabel={(user: IntraUser) => user.login}
       itemToStringValue={(user: IntraUser) => user.login}
     >
       <ComboboxInput

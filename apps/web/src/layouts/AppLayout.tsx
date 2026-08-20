@@ -5,7 +5,9 @@ import {
   FolderKanban,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   UserRound,
+  Users,
 } from "lucide-react"
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 
@@ -21,6 +23,7 @@ import {
 import type { AuthUser } from "@/features/auth/auth-api"
 import { clearTokens } from "@/features/auth/auth-storage"
 import { getNotifications } from "@/features/dashboard/dashboard-api"
+import { useRealtimeSocket } from "@/features/realtime/useRealtimeSocket"
 import { UserSearch } from "@/features/search/UserSearch"
 import { cn } from "@/lib/utils"
 
@@ -50,10 +53,13 @@ export function AppLayout() {
       || preview === "evaluations"
     )
   const currentUser = queryClient.getQueryData<AuthUser>(["auth", "me"])
+  const realtimeEnabled =
+    !isPreview && currentUser?.is_intra_linked === true
+  useRealtimeSocket(realtimeEnabled)
   const notificationsRequest = useQuery({
     queryKey: ["notifications"],
     queryFn: getNotifications,
-    enabled: !isPreview && currentUser?.is_intra_linked === true,
+    enabled: realtimeEnabled,
   })
   const notifications = isPreview
     ? previewNotifications
@@ -146,6 +152,34 @@ export function AppLayout() {
           >
             <ClipboardCheck />
             Évaluations
+          </NavLink>
+          <NavLink
+            to="/friends"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+                isActive
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )
+            }
+          >
+            <Users />
+            Amis
+          </NavLink>
+          <NavLink
+            to="/conversations"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+                isActive
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )
+            }
+          >
+            <MessageCircle />
+            Messages
           </NavLink>
         </nav>
 

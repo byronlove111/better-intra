@@ -8,7 +8,7 @@ import {
   Users,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 import {
   Avatar,
@@ -50,6 +50,7 @@ import {
   getMyProfile,
   updateMyBio,
 } from "@/features/profile/profile-api"
+import { presenceOnlineQueryKey } from "@/features/realtime/presence-cache"
 import { IntraStatsCards } from "@/features/profile/IntraStatsCards"
 import { LogtimeCard } from "@/features/profile/LogtimeCard"
 import {
@@ -141,7 +142,7 @@ export function DashboardPage() {
       && eventsRequest.isSuccess,
   })
   const onlineFriendsRequest = useQuery({
-    queryKey: ["dashboard", "online-friends"],
+    queryKey: presenceOnlineQueryKey,
     queryFn: getDashboardOnlineFriends,
     enabled: dashboardQueriesEnabled,
   })
@@ -152,6 +153,25 @@ export function DashboardPage() {
   })
 
   const oauthStatus = searchParams.get("intra")
+  const oauthReason = searchParams.get("reason")
+  const oauthErrorMessage = (() => {
+    if (oauthStatus !== "error") return null
+    switch (oauthReason) {
+      case "already_linked":
+        return "Ce compte Intra 42 est déjà lié à un autre compte BetterIntra. Connecte-toi avec ce compte-là, ou utilise un autre Intra."
+      case "token_exchange":
+        return "Échange du code OAuth échoué (code déjà utilisé ou expiré). Réessaie depuis le bouton ci-dessous."
+      case "invalid_state":
+      case "missing_code":
+        return "Session OAuth invalide. Réessaie la liaison."
+      case "db_conflict":
+        return "Conflit en base lors de la liaison. Réessaie ou contacte l’équipe."
+      default:
+        return oauthReason
+          ? `La liaison avec Intra 42 a échoué (${oauthReason}).`
+          : "La liaison avec Intra 42 a échoué. Tu peux réessayer."
+    }
+  })()
   const linkError = getApiErrorMessage(linkIntraRequest.error)
   const profile = isPreview ? dashboardPreview.profile : profileRequest.data
   const intra = profile?.intra
@@ -236,7 +256,7 @@ export function DashboardPage() {
 
       {oauthStatus === "error" && (
         <p role="alert" className="text-sm text-destructive">
-          La liaison avec Intra 42 a échoué. Tu peux réessayer.
+          {oauthErrorMessage}
         </p>
       )}
 
@@ -310,8 +330,12 @@ export function DashboardPage() {
                       {intra.location ?? "Non connecté"}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                      <p><strong>{followingCount}</strong> abonnements</p>
-                      <p><strong>{followersCount}</strong> abonnés</p>
+                      <Link to="/friends" className="hover:underline">
+                        <strong>{followingCount}</strong> abonnements
+                      </Link>
+                      <Link to="/friends" className="hover:underline">
+                        <strong>{followersCount}</strong> abonnés
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -428,26 +452,35 @@ export function DashboardPage() {
                   <ul className="flex flex-col gap-4">
                     {onlineFriends.map((friend) => (
                       <li key={friend.id} className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar className="size-10">
-                            <AvatarImage
-                              src={friend.avatar_url ?? undefined}
-                              alt={`Photo de ${friend.login}`}
-                            />
-                            <AvatarFallback>
-                              {friend.login.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="absolute right-0 bottom-0 size-3 rounded-full border-2 border-card bg-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {friend.display_name ?? friend.login}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            @{friend.login}
-                          </p>
-                        </div>
+                        <Link
+                          to={friend.login
+                            ? `/profile/${encodeURIComponent(friend.login)}`
+                            : "/friends"}
+                          className="flex min-w-0 flex-1 items-center gap-3"
+                        >
+                          <div className="relative shrink-0">
+                            <Avatar className="size-10">
+                              <AvatarImage
+                                src={friend.avatar_url ?? undefined}
+                                alt={`Photo de ${friend.login ?? "ami"}`}
+                              />
+                              <AvatarFallback>
+                                {(friend.login ?? "?").slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="absolute right-0 bottom-0 size-3 rounded-full border-2 border-card bg-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {friend.display_name ?? friend.login ?? "Ami"}
+                            </p>
+                            {friend.login && (
+                              <p className="truncate text-sm text-muted-foreground">
+                                @{friend.login}
+                              </p>
+                            )}
+                          </div>
+                        </Link>
                       </li>
                     ))}
                   </ul>

@@ -22,6 +22,7 @@ type ProfileIntra = {
 }
 
 export type UserProfile = {
+  id?: number | null
   login: string | null
   display_name: string | null
   avatar_url: string | null
@@ -29,12 +30,14 @@ export type UserProfile = {
   bio: string | null
   is_betterintra_linked: boolean
   is_intra_linked: boolean
+  is_online?: boolean | null
   intra: ProfileIntra | null
 }
 
 export type FriendStats = {
   following_count: number
   followers_count: number
+  is_following?: boolean | null
 }
 
 export type ProfileLogtime = {

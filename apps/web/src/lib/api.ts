@@ -87,7 +87,16 @@ export async function apiRequest<T>(
     )
   }
 
-  return response.json() as Promise<T>
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
+    return undefined as T
+  }
+
+  const text = await response.text()
+  if (!text) {
+    return undefined as T
+  }
+
+  return JSON.parse(text) as T
 }
 
 async function refreshTokens() {
@@ -119,4 +128,18 @@ async function refreshTokens() {
   })
 
   return refreshPromise
+}
+
+/** Refresh JWT and return the new access token (used by the WebSocket client). */
+export async function refreshSessionAccessToken() {
+  await refreshTokens()
+  const accessToken = getAccessToken()
+  if (!accessToken) {
+    throw new Error("Missing access token after refresh")
+  }
+  return accessToken
+}
+
+export function getApiBaseUrl() {
+  return API_URL
 }
