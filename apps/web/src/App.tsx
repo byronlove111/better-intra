@@ -21,7 +21,14 @@ function RootRedirect() {
   const reason = params.get("reason")
 
   const next = new URLSearchParams()
-  if (import.meta.env.DEV && (preview === "dashboard" || preview === "profile")) {
+  if (import.meta.env.DEV && (
+    preview === "dashboard"
+    || preview === "profile"
+    || preview === "message"
+  )) {
+    if (preview === "message") {
+      return <Navigate to="/conversations?preview=message" replace />
+    }
     next.set("preview", "dashboard")
   }
   // Preserve OAuth callback flags from GET /auth/callback → /?intra=...

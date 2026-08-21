@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, MessageCircle, SendHorizontal } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Bubble, BubbleContent } from "@/components/ui/bubble"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -21,22 +20,15 @@ import {
   InputGroupTextarea,
 } from "@/components/ui/input-group"
 import {
-  Message,
-  MessageContent,
-  MessageFooter,
-} from "@/components/ui/message"
-import {
   MessageScroller,
   MessageScrollerButton,
   MessageScrollerContent,
-  MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller"
 import { getCurrentUser } from "@/features/auth/auth-api"
 import { setActiveConversationId } from "@/features/chat/active-conversation"
 import {
-  type ChatMessage,
   type Conversation,
   conversationMessagesQueryKey,
   conversationQueryKey,
@@ -48,16 +40,16 @@ import {
   sendMessage,
 } from "@/features/chat/chat-api"
 import { applyMessageCreated } from "@/features/chat/chat-cache"
+import { ChatMessageList } from "@/features/chat/ChatMessageList"
+import {
+  chatPreviewConversation,
+  chatPreviewConversations,
+  chatPreviewMe,
+  chatPreviewMessages,
+} from "@/features/chat/chat-preview"
 import { getInitials } from "@/features/profile/profile-display"
 import { getApiErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
-
-function formatMessageTime(value: string) {
-  return new Intl.DateTimeFormat("fr-FR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value))
-}
 
 function formatListTime(value: string) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -71,16 +63,18 @@ function formatListTime(value: string) {
 function ConversationListItem({
   conversation,
   active,
+  previewHref,
 }: {
   conversation: Conversation
   active: boolean
+  previewHref?: string
 }) {
   const peer = conversation.peer
   const preview = conversation.last_message?.body ?? "Aucun message"
 
   return (
     <Link
-      to={`/conversations/${conversation.id}`}
+      to={previewHref ?? `/conversations/${conversation.id}`}
       className={cn(
         "flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50",
         active && "border-ring bg-muted",
@@ -181,12 +175,97 @@ function ChatComposer({
   )
 }
 
+function ChatThreadShell({
+  peer,
+  peerProfileHref,
+  showBack,
+  backHref,
+  children,
+  composer,
+}: {
+  peer: {
+    login: string
+    display_name: string | null
+    avatar_url: string | null
+    is_online?: boolean
+  }
+  peerProfileHref?: string
+  showBack?: boolean
+  backHref?: string
+  children: ReactNode
+  composer: ReactNode
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex items-center gap-3 border-b px-4 py-3">
+        {showBack && backHref ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            render={<Link to={backHref} />}
+          >
+            <ArrowLeft />
+            <span className="sr-only">Retour</span>
+          </Button>
+        ) : null}
+        <Avatar>
+          <AvatarImage
+            src={peer.avatar_url ?? undefined}
+            alt={`Photo de ${peer.login}`}
+          />
+          <AvatarFallback>
+            {getInitials(peer.display_name ?? peer.login)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate font-medium">
+              {peer.display_name ?? peer.login}
+            </p>
+            {peer.is_online ? <Badge variant="secondary">En ligne</Badge> : null}
+          </div>
+          <p className="truncate text-sm text-muted-foreground">@{peer.login}</p>
+        </div>
+        {peerProfileHref ? (
+          <Button
+            variant="outline"
+            size="sm"
+            render={<Link to={peerProfileHref} />}
+          >
+            Profil
+          </Button>
+        ) : null}
+      </header>
+
+      <MessageScrollerProvider autoScroll>
+        <MessageScroller className="min-h-0 flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent className="gap-4 p-4">
+              {children}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton />
+        </MessageScroller>
+      </MessageScrollerProvider>
+
+      {composer}
+    </div>
+  )
+}
+
 function ChatThread({
   conversationId,
   currentUserId,
+  me,
 }: {
   conversationId: number
   currentUserId: number
+  me: {
+    login: string
+    display_name: string | null
+    avatar_url: string | null
+  }
 }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -270,97 +349,28 @@ function ChatThread({
   const peer = conversation.peer
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b px-4 py-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          render={<Link to="/conversations" />}
-        >
-          <ArrowLeft />
-          <span className="sr-only">Retour</span>
-        </Button>
-        <Avatar>
-          <AvatarImage
-            src={peer.avatar_url ?? undefined}
-            alt={`Photo de ${peer.login}`}
-          />
-          <AvatarFallback>
-            {getInitials(peer.display_name ?? peer.login)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-medium">
-              {peer.display_name ?? peer.login}
-            </p>
-            {peer.is_online && <Badge variant="secondary">En ligne</Badge>}
-          </div>
-          <p className="truncate text-sm text-muted-foreground">@{peer.login}</p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          render={<Link to={`/profile/${encodeURIComponent(peer.login)}`} />}
-        >
-          Profil
-        </Button>
-      </header>
-
-      <MessageScrollerProvider autoScroll>
-        <MessageScroller className="min-h-0 flex-1">
-          <MessageScrollerViewport>
-            <MessageScrollerContent className="gap-3 p-4">
-              {messages.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Dis bonjour à @{peer.login}.
-                </p>
-              ) : (
-                messages.map((message: ChatMessage) => {
-                  const mine = message.sender_id === currentUserId
-                  const readByPeer =
-                    mine
-                    && conversation.peer_last_read_message_id != null
-                    && message.id <= conversation.peer_last_read_message_id
-
-                  return (
-                    <MessageScrollerItem
-                      key={message.id}
-                      messageId={String(message.id)}
-                      scrollAnchor={mine}
-                    >
-                      <Message align={mine ? "end" : "start"}>
-                        <MessageContent>
-                          <Bubble
-                            variant={mine ? "default" : "secondary"}
-                            align={mine ? "end" : "start"}
-                          >
-                            <BubbleContent>{message.body}</BubbleContent>
-                          </Bubble>
-                          <MessageFooter>
-                            {formatMessageTime(message.created_at)}
-                            {readByPeer ? " · Lu" : ""}
-                          </MessageFooter>
-                        </MessageContent>
-                      </Message>
-                    </MessageScrollerItem>
-                  )
-                })
-              )}
-            </MessageScrollerContent>
-          </MessageScrollerViewport>
-          <MessageScrollerButton />
-        </MessageScroller>
-      </MessageScrollerProvider>
-
-      <ChatComposer
-        disabled={false}
-        pending={sendRequest.isPending}
-        error={sendError}
-        onSend={(body) => sendRequest.mutate(body)}
+    <ChatThreadShell
+      peer={peer}
+      showBack
+      backHref="/conversations"
+      peerProfileHref={`/profile/${encodeURIComponent(peer.login)}`}
+      composer={(
+        <ChatComposer
+          disabled={false}
+          pending={sendRequest.isPending}
+          error={sendError}
+          onSend={(body) => sendRequest.mutate(body)}
+        />
+      )}
+    >
+      <ChatMessageList
+        messages={messages}
+        currentUserId={currentUserId}
+        peer={peer}
+        me={me}
+        peerLastReadMessageId={conversation.peer_last_read_message_id}
       />
-    </div>
+    </ChatThreadShell>
   )
 }
 
@@ -419,8 +429,68 @@ function NewChatComposer({ currentUserId }: { currentUserId: number }) {
   )
 }
 
+function ChatPreviewPage() {
+  const peer = chatPreviewConversation.peer
+
+  return (
+    <section className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
+      <aside className="flex w-full shrink-0 flex-col border-b md:w-80 md:border-r md:border-b-0">
+        <div className="flex items-center gap-2 border-b px-4 py-3">
+          <MessageCircle className="text-muted-foreground" />
+          <div>
+            <h1 className="font-semibold tracking-tight">Messages</h1>
+            <p className="text-xs text-muted-foreground">Preview DEV</p>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+          {chatPreviewConversations.map((conversation) => (
+            <ConversationListItem
+              key={conversation.id}
+              conversation={conversation}
+              active={conversation.id === chatPreviewConversation.id}
+              previewHref="/conversations?preview=message"
+            />
+          ))}
+        </div>
+      </aside>
+
+      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+        <ChatThreadShell
+          peer={peer}
+          composer={(
+            <ChatComposer
+              disabled
+              pending={false}
+              error={null}
+              onSend={() => {}}
+            />
+          )}
+        >
+          <ChatMessageList
+            messages={chatPreviewMessages}
+            currentUserId={chatPreviewMe.id}
+            peer={peer}
+            me={chatPreviewMe}
+            peerLastReadMessageId={
+              chatPreviewConversation.peer_last_read_message_id
+            }
+          />
+        </ChatThreadShell>
+      </div>
+    </section>
+  )
+}
+
 export function ChatPage() {
   const { conversationId: conversationIdParam } = useParams()
+  const [searchParams] = useSearchParams()
+  const isPreview =
+    import.meta.env.DEV && searchParams.get("preview") === "message"
+
+  if (isPreview) {
+    return <ChatPreviewPage />
+  }
+
   const conversationId = conversationIdParam
     ? Number.parseInt(conversationIdParam, 10)
     : null
@@ -464,6 +534,11 @@ export function ChatPage() {
 
   const conversations = conversationsRequest.data ?? []
   const listError = getApiErrorMessage(conversationsRequest.error)
+  const me = {
+    login: currentUserRequest.data.login ?? "moi",
+    display_name: currentUserRequest.data.display_name,
+    avatar_url: currentUserRequest.data.avatar_url,
+  }
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
@@ -517,6 +592,7 @@ export function ChatPage() {
           <ChatThread
             conversationId={conversationId}
             currentUserId={currentUserRequest.data.id}
+            me={me}
           />
         ) : (
           <NewChatComposer currentUserId={currentUserRequest.data.id} />
