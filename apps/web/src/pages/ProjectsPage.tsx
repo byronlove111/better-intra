@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { PagePagination } from "@/components/PagePagination"
+import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -118,9 +119,11 @@ export function ProjectsPage() {
             {error}
           </p>
         ) : projects.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucun projet à afficher.
-          </p>
+          <EmptyState
+            icon={FolderKanban}
+            title="Aucun projet"
+            description="Aucun projet à afficher pour le moment."
+          />
         ) : (
           <Table>
             <TableHeader>

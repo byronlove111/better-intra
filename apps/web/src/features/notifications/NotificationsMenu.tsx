@@ -4,6 +4,7 @@ import { fr } from "date-fns/locale"
 import { Bell } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -46,17 +47,24 @@ export function NotificationsMenu({
 
   const notifications = canFetch ? (notificationsRequest.data ?? []) : []
 
-  let emptyMessage: string | null = null
+  let emptyTitle: string | null = null
+  let emptyDescription: string | undefined
+
   if (isPreview) {
-    emptyMessage = "Aucune notification récente"
+    emptyTitle = "Aucune notification"
+    emptyDescription = "Aucune notification récente."
   } else if (currentUser?.is_intra_linked !== true) {
-    emptyMessage = "Lie ton compte 42 pour recevoir des notifications."
+    emptyTitle = "Compte 42 requis"
+    emptyDescription = "Lie ton compte 42 pour recevoir des notifications."
   } else if (notificationsRequest.isPending) {
-    emptyMessage = "Chargement des notifications…"
+    emptyTitle = "Chargement…"
+    emptyDescription = "Récupération des notifications."
   } else if (notificationsRequest.isError) {
-    emptyMessage = "Les notifications sont indisponibles."
+    emptyTitle = "Indisponible"
+    emptyDescription = "Les notifications sont temporairement indisponibles."
   } else if (notifications.length === 0) {
-    emptyMessage = "Aucune notification récente"
+    emptyTitle = "Aucune notification"
+    emptyDescription = "Aucune notification récente."
   }
 
   const showBadge = canFetch && notifications.length > 0
@@ -78,8 +86,15 @@ export function NotificationsMenu({
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-          {emptyMessage ? (
-            <DropdownMenuItem disabled>{emptyMessage}</DropdownMenuItem>
+          {emptyTitle ? (
+            <div className="px-1 pb-1">
+              <EmptyState
+                className="py-6"
+                icon={Bell}
+                title={emptyTitle}
+                description={emptyDescription}
+              />
+            </div>
           ) : (
             notifications.map((notification) => {
               const createdAt = new Date(notification.created_at)

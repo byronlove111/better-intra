@@ -3,16 +3,10 @@ import { MessageCircle, UserRoundMinus, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 
+import { EmptyState } from "@/components/EmptyState"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getCurrentUser } from "@/features/auth/auth-api"
 import {
@@ -206,15 +200,11 @@ export function FriendsPage() {
             </p>
           )}
           {!followingRequest.isPending && !followingError && following.length === 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Aucun abonnement</CardTitle>
-                <CardDescription>
-                  Cherche un élève en haut de page, ouvre son profil, puis
-                  suis-le.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <EmptyState
+              icon={Users}
+              title="Aucun abonnement"
+              description="Cherche un élève en haut de page, ouvre son profil, puis suis-le."
+            />
           )}
           {following.length > 0 && (
             <ul className="flex flex-col gap-3">
@@ -243,14 +233,11 @@ export function FriendsPage() {
             </p>
           )}
           {!followersRequest.isPending && !followersError && followers.length === 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Aucun abonné</CardTitle>
-                <CardDescription>
-                  Quand quelqu’un te suit, il apparaîtra ici.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <EmptyState
+              icon={Users}
+              title="Aucun abonné"
+              description="Quand quelqu’un te suit, il apparaîtra ici."
+            />
           )}
           {followers.length > 0 && (
             <ul className="flex flex-col gap-3">
