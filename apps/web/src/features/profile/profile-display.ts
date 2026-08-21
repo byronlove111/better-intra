@@ -45,6 +45,41 @@ export function formatDateOnly(value: string | null | undefined) {
   }).format(new Date(value))
 }
 
+/** French relative time: "il y a 3 jours", "il y a 2 mois", … */
+export function formatRelativeAgo(value: string | null | undefined) {
+  if (!value) return null
+
+  const then = new Date(value).getTime()
+  if (Number.isNaN(then)) return null
+
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000))
+
+  if (seconds < 60) return "il y a moins d'une minute"
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) {
+    return minutes === 1 ? "il y a 1 minute" : `il y a ${minutes} minutes`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) {
+    return hours === 1 ? "il y a 1 heure" : `il y a ${hours} heures`
+  }
+
+  const days = Math.floor(hours / 24)
+  if (days < 30) {
+    return days === 1 ? "il y a 1 jour" : `il y a ${days} jours`
+  }
+
+  const months = Math.floor(days / 30)
+  if (months < 12) {
+    return months === 1 ? "il y a 1 mois" : `il y a ${months} mois`
+  }
+
+  const years = Math.floor(months / 12)
+  return years === 1 ? "il y a 1 an" : `il y a ${years} ans`
+}
+
 export function getDaysRemaining(value: string | null | undefined) {
   if (!value) return null
 

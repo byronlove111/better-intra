@@ -18,7 +18,18 @@ const myPreviewProfile: UserProfile = {
     campus: [{ name: "Paris" }],
     cursus: [
       {
+        id: 9,
+        name: "C Piscine",
+        slug: "c-piscine",
+        grade: null,
+        level: 10.0,
+        end_at: "2024-09-01T00:00:00+02:00",
+        blackholed_at: null,
+      },
+      {
+        id: 21,
         name: "42cursus",
+        slug: "42-cursus",
         grade: "Learner",
         level: 8.42,
         end_at: "2027-12-31T23:59:59+01:00",
@@ -37,6 +48,7 @@ export const previewProjects: ProfileProject[] = [
     marked_at: "2026-07-28T12:00:00+02:00",
     project_name: "minishell",
     updated_at: "2026-07-28T12:00:00+02:00",
+    cursus_ids: [21],
   },
   {
     id: 2,
@@ -46,6 +58,7 @@ export const previewProjects: ProfileProject[] = [
     marked_at: null,
     project_name: "ft_transcendence",
     updated_at: "2026-08-12T18:00:00+02:00",
+    cursus_ids: [21],
   },
   {
     id: 3,
@@ -55,6 +68,7 @@ export const previewProjects: ProfileProject[] = [
     marked_at: "2026-06-19T10:00:00+02:00",
     project_name: "NetPractice",
     updated_at: "2026-06-19T10:00:00+02:00",
+    cursus_ids: [21],
   },
   {
     id: 4,
@@ -64,6 +78,17 @@ export const previewProjects: ProfileProject[] = [
     marked_at: "2026-05-07T14:00:00+02:00",
     project_name: "cub3d",
     updated_at: "2026-05-07T14:00:00+02:00",
+    cursus_ids: [21],
+  },
+  {
+    id: 5,
+    status: "finished",
+    final_mark: 100,
+    validated: true,
+    marked_at: "2024-08-20T12:00:00+02:00",
+    project_name: "C Piscine C 00",
+    updated_at: "2024-08-20T12:00:00+02:00",
+    cursus_ids: [9],
   },
 ]
 

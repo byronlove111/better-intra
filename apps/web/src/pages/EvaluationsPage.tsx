@@ -1,25 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
-import { ClipboardCheck } from "lucide-react"
-import { Fragment, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { ClipboardCheck, Link2 } from "lucide-react"
+import { useState } from "react"
+import { Link, useSearchParams } from "react-router-dom"
 
-import { PagePagination } from "@/components/PagePagination"
 import { EmptyState } from "@/components/EmptyState"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { PagePagination } from "@/components/PagePagination"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -29,10 +16,28 @@ import { getEvaluationsPage } from "@/features/dashboard/dashboard-api"
 import { previewEvaluations } from "@/features/dashboard/dashboard-preview"
 import { formatDate } from "@/features/profile/profile-display"
 import { getApiErrorMessage } from "@/lib/api"
+import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
 type EvaluationView = "corrector" | "corrected"
+
+function formatEvalTime(value: string | null | undefined) {
+  if (!value) return "—"
+  return new Intl.DateTimeFormat("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value))
+}
+
+function formatEvalDay(value: string | null | undefined) {
+  if (!value) return "Date inconnue"
+  return new Intl.DateTimeFormat("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(value))
+}
 
 export function EvaluationsPage() {
   const [searchParams] = useSearchParams()
@@ -47,10 +52,12 @@ export function EvaluationsPage() {
     enabled: !isPreview,
   })
 
+  const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
+
   const evaluationsRequest = useQuery({
     queryKey: ["evaluations", view, page],
     queryFn: () => getEvaluationsPage(page, PAGE_SIZE, view),
-    enabled: !isPreview && currentUserRequest.data?.is_intra_linked === true,
+    enabled: !isPreview && isIntraLinked,
   })
 
   const evaluations = isPreview
@@ -68,150 +75,193 @@ export function EvaluationsPage() {
     ? evaluations.filter((evaluation) => evaluation.role === view)
     : evaluations
 
-  if (!isPreview && currentUserRequest.data?.is_intra_linked === false) {
+  if (!isPreview && currentUserRequest.isPending) {
     return (
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Compte Intra non lié</CardTitle>
-          <CardDescription>
-            Lie ton compte 42 depuis le dashboard pour afficher tes évaluations.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
+        <p className="text-sm text-muted-foreground">Chargement…</p>
+      </section>
     )
   }
 
-  if (evaluationsRequest.isPending && !isPreview) {
+  if (!isPreview && !isIntraLinked) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Évaluations</CardTitle>
-          <CardDescription>Chargement des évaluations…</CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
+        <div className="flex items-center gap-3">
+          <ClipboardCheck className="text-muted-foreground" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Évaluations
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Historique correcteur et évalué
+            </p>
+          </div>
+        </div>
 
-  if (error && !isPreview) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Évaluations</CardTitle>
-          <CardDescription className="text-destructive">
-            {error}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+        <EmptyState
+          icon={Link2}
+          title="Compte Intra non lié"
+          description="Lie ton compte 42 depuis le dashboard pour afficher tes évaluations."
+        >
+          <Button render={<Link to="/dashboard" />}>
+            <Link2 data-icon="inline-start" />
+            Aller au dashboard
+          </Button>
+        </EmptyState>
+      </section>
     )
   }
 
   return (
-    <section className="flex flex-col gap-6">
-      <ToggleGroup
-        value={[view]}
-        onValueChange={(values) => {
-          const selectedView = values[0]
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <ClipboardCheck className="text-muted-foreground" />
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Évaluations
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {view === "corrector"
+                  ? "Les groupes et élèves que tu as évalués"
+                  : "Les évaluations reçues par toi ou ton groupe"}
+              </p>
+            </div>
+          </div>
+          {!isPreview && pagination?.total != null ? (
+            <p className="text-sm tabular-nums text-muted-foreground">
+              {pagination.total} évaluation{pagination.total > 1 ? "s" : ""}
+            </p>
+          ) : null}
+        </div>
 
-          if (selectedView === "corrector" || selectedView === "corrected") {
-            setPage(1)
-            setView(selectedView)
-          }
-        }}
-        variant="outline"
-        spacing={0}
-      >
-        <ToggleGroupItem value="corrector">
-          En tant que correcteur
-        </ToggleGroupItem>
-        <ToggleGroupItem value="corrected">
-          En tant qu’évalué
-        </ToggleGroupItem>
-      </ToggleGroup>
+        <ToggleGroup
+          value={[view]}
+          onValueChange={(values) => {
+            const selectedView = values[0]
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardCheck />
-            {view === "corrector"
-              ? "Évaluations en tant que correcteur"
-              : "Évaluations en tant qu’évalué"}
-          </CardTitle>
-          <CardDescription>
-            {view === "corrector"
-              ? "Les groupes et les élèves que tu as évalués."
-              : "Les évaluations reçues par toi ou ton groupe."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {visibleEvaluations.length === 0 ? (
-            <EmptyState
-              icon={ClipboardCheck}
-              title="Aucune évaluation"
-              description="Aucune évaluation dans cette catégorie sur cette page."
-            />
-          ) : (
-            <Table>
-              <TableHeader className="[&_tr]:border-b-2">
-                <TableRow>
-                  <TableHead>Correcteur</TableHead>
-                  {/* TODO: utiliser team_name à la place de project_name après le correctif backend. */}
-                  <TableHead>Groupe évalué</TableHead>
-                  <TableHead>Élèves évalués</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleEvaluations.map((evaluation) => (
-                  <Fragment key={evaluation.id}>
-                    <TableRow className="border-b-0">
-                      <TableCell className="py-4">
-                        {evaluation.corrector_login ?? "—"}
-                      </TableCell>
-                      <TableCell className="py-4 font-medium">
+            if (selectedView === "corrector" || selectedView === "corrected") {
+              setPage(1)
+              setView(selectedView)
+            }
+          }}
+          variant="outline"
+          spacing={0}
+          className="w-fit"
+        >
+          <ToggleGroupItem value="corrector">
+            En tant que correcteur
+          </ToggleGroupItem>
+          <ToggleGroupItem value="corrected">
+            En tant qu’évalué
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {evaluationsRequest.isPending && !isPreview ? (
+        <p className="text-sm text-muted-foreground">
+          Chargement des évaluations…
+        </p>
+      ) : error && !isPreview ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : visibleEvaluations.length === 0 ? (
+        <EmptyState
+          icon={ClipboardCheck}
+          title="Aucune évaluation"
+          description="Aucune évaluation dans cette catégorie sur cette page."
+        />
+      ) : (
+        <ul className="flex flex-col">
+          {visibleEvaluations.map((evaluation, index) => {
+            const peopleLine = view === "corrector"
+              ? (evaluation.corrected_logins.length > 0
+                ? evaluation.corrected_logins.map((login) => `@${login}`).join(", ")
+                : "Élèves non renseignés")
+              : (evaluation.corrector_login
+                ? `Correcteur · @${evaluation.corrector_login}`
+                : "Correcteur non renseigné")
+
+            return (
+              <li
+                key={evaluation.id}
+                className={cn(
+                  "flex flex-col gap-3 py-5",
+                  index > 0 && "border-t",
+                )}
+              >
+                <div className="flex items-start gap-4 sm:items-center sm:gap-6">
+                  <div className="w-16 shrink-0 text-left sm:w-20">
+                    <p className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
+                      {formatEvalTime(evaluation.begin_at)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-muted-foreground uppercase sm:text-xs">
+                      {formatEvalDay(evaluation.begin_at)}
+                    </p>
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
                         {evaluation.project_name ?? "Groupe non renseigné"}
-                      </TableCell>
-                      <TableCell className="py-4">
-                        {evaluation.corrected_logins.join(", ") || "—"}
-                      </TableCell>
-                      <TableCell className="py-4">
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {peopleLine}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
                         {formatDate(evaluation.begin_at)}
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell colSpan={4} className="whitespace-normal pt-2 pb-6">
-                        <div className="flex flex-col gap-2">
-                          <p>
-                            <strong>
-                              {evaluation.final_mark !== null
-                                ? `${evaluation.final_mark} %`
-                                : "Note indisponible"}
-                            </strong>{" "}
-                            {evaluation.comment ?? "Aucun commentaire de correction."}
-                          </p>
-                          <p className="text-muted-foreground">
-                            {evaluation.feedback_rating !== undefined
-                            && evaluation.feedback_rating !== null
-                              ? `${evaluation.feedback_rating}/5`
-                              : "Avis évaluateur indisponible"}{" "}
-                            {evaluation.feedback_comment ?? ""}
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {evaluation.final_mark !== null ? (
+                        <span className="text-sm font-semibold tabular-nums">
+                          {evaluation.final_mark} %
+                        </span>
+                      ) : (
+                        <span className="text-sm tabular-nums text-muted-foreground">
+                          —
+                        </span>
+                      )}
+                      <Badge variant="outline">
+                        {view === "corrector" ? "Correcteur" : "Évalué"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
 
-      <PagePagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        disabled={isPreview || evaluationsRequest.isPending}
-      />
+                <div className="flex flex-col gap-1.5 pl-0 sm:pl-[6.5rem]">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {evaluation.comment?.trim()
+                      || "Aucun commentaire de correction."}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {evaluation.feedback_rating !== undefined
+                    && evaluation.feedback_rating !== null
+                      ? `Avis évaluateur · ${evaluation.feedback_rating}/5`
+                      : "Avis évaluateur indisponible"}
+                    {evaluation.feedback_comment?.trim()
+                      ? ` · ${evaluation.feedback_comment}`
+                      : ""}
+                  </p>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {totalPages > 1 ? (
+        <div className="flex justify-center">
+          <PagePagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={isPreview || evaluationsRequest.isPending}
+          />
+        </div>
+      ) : null}
     </section>
   )
 }

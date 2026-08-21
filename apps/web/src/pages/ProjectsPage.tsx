@@ -1,35 +1,21 @@
 import { useQuery } from "@tanstack/react-query"
-import { FolderKanban } from "lucide-react"
+import { FolderKanban, Link2 } from "lucide-react"
 import { useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
-import { PagePagination } from "@/components/PagePagination"
 import { EmptyState } from "@/components/EmptyState"
+import { PagePagination } from "@/components/PagePagination"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/features/auth/auth-api"
 import {
   type ProfileProject,
   getMyProjectsPage,
 } from "@/features/profile/profile-api"
-import { formatDateOnly } from "@/features/profile/profile-display"
+import { formatRelativeAgo } from "@/features/profile/profile-display"
 import { previewProjects } from "@/features/profile/profile-preview"
 import { getApiErrorMessage } from "@/lib/api"
+import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
@@ -66,10 +52,12 @@ export function ProjectsPage() {
     enabled: !isPreview,
   })
 
+  const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
+
   const projectsRequest = useQuery({
     queryKey: ["projects", page],
     queryFn: () => getMyProjectsPage(page, PAGE_SIZE),
-    enabled: !isPreview && currentUserRequest.data?.is_intra_linked === true,
+    enabled: !isPreview && isIntraLinked,
   })
 
   const projects = isPreview
@@ -84,94 +72,129 @@ export function ProjectsPage() {
         Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
       )
 
-  if (!isPreview && currentUserRequest.data?.is_intra_linked === false) {
+  if (!isPreview && currentUserRequest.isPending) {
     return (
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Compte Intra non lié</CardTitle>
-          <CardDescription>
-            Lie ton compte 42 depuis le dashboard pour afficher tes projets.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
+        <p className="text-sm text-muted-foreground">Chargement…</p>
+      </section>
+    )
+  }
+
+  if (!isPreview && !isIntraLinked) {
+    return (
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
+        <div className="flex items-center gap-3">
+          <FolderKanban className="text-muted-foreground" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Projets</h1>
+            <p className="text-sm text-muted-foreground">
+              Tes projets du cursus 42
+            </p>
+          </div>
+        </div>
+
+        <EmptyState
+          icon={Link2}
+          title="Compte Intra non lié"
+          description="Lie ton compte 42 depuis le dashboard pour afficher tes projets."
+        >
+          <Button render={<Link to="/dashboard" />}>
+            <Link2 data-icon="inline-start" />
+            Aller au dashboard
+          </Button>
+        </EmptyState>
+      </section>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FolderKanban />
-          Projets
-        </CardTitle>
-        <CardDescription>
-          Tes projets du cursus 42, avec leur statut et leur note.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent>
-        {projectsRequest.isPending && !isPreview ? (
-          <p className="text-sm text-muted-foreground">
-            Chargement des projets…
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <FolderKanban className="text-muted-foreground" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Projets</h1>
+            <p className="text-sm text-muted-foreground">
+              Statut et notes du cursus 42
+            </p>
+          </div>
+        </div>
+        {!isPreview && pagination?.total != null ? (
+          <p className="text-sm tabular-nums text-muted-foreground">
+            {pagination.total} projet{pagination.total > 1 ? "s" : ""}
           </p>
-        ) : error && !isPreview ? (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        ) : projects.length === 0 ? (
-          <EmptyState
-            icon={FolderKanban}
-            title="Aucun projet"
-            description="Aucun projet à afficher pour le moment."
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Projet</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead>Date d’évaluation</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.map((project) => {
-                const status = getProjectStatus(project)
+        ) : null}
+      </div>
 
-                return (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">
-                      {project.project_name ?? "Projet sans nom"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={status.variant}>{status.label}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {project.final_mark !== null
-                        ? `${project.final_mark} %`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {project.marked_at
-                        ? formatDateOnly(project.marked_at)
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-
-      <CardFooter className="justify-center">
-        <PagePagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          disabled={isPreview || projectsRequest.isPending}
+      {projectsRequest.isPending && !isPreview ? (
+        <p className="text-sm text-muted-foreground">
+          Chargement des projets…
+        </p>
+      ) : error && !isPreview ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : projects.length === 0 ? (
+        <EmptyState
+          icon={FolderKanban}
+          title="Aucun projet"
+          description="Aucun projet à afficher pour le moment."
         />
-      </CardFooter>
-    </Card>
+      ) : (
+        <ul className="flex flex-col">
+          {projects.map((project, index) => {
+            const status = getProjectStatus(project)
+
+            return (
+              <li
+                key={project.id}
+                className={cn(
+                  "flex flex-col gap-0.5 py-2.5 sm:flex-row sm:items-center sm:justify-between",
+                  index > 0 && "border-t",
+                )}
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {project.project_name ?? "Projet sans nom"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatRelativeAgo(project.marked_at) ??
+                      formatRelativeAgo(project.updated_at) ??
+                      "Pas encore évalué"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {project.final_mark !== null ? (
+                    <span
+                      className={cn(
+                        "text-sm font-semibold tabular-nums",
+                        project.validated === true
+                          ? "text-emerald-500"
+                          : "text-destructive",
+                      )}
+                    >
+                      {project.final_mark}
+                    </span>
+                  ) : (
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {totalPages > 1 ? (
+        <div className="flex justify-center">
+          <PagePagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={isPreview || projectsRequest.isPending}
+          />
+        </div>
+      ) : null}
+    </section>
   )
 }

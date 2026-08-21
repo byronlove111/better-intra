@@ -1,7 +1,9 @@
 import { apiDownload, apiRequest, apiUpload } from "@/lib/api"
 
 type ProfileCursus = {
+  id?: number | null
   name: string | null
+  slug?: string | null
   grade: string | null
   level: number | null
   end_at: string | null
@@ -57,6 +59,7 @@ export type ProfileProject = {
   marked_at: string | null
   project_name: string | null
   updated_at: string | null
+  cursus_ids?: number[]
 }
 
 type ProjectsResponse = {
@@ -145,12 +148,31 @@ export function getUserFriendStats(login: string) {
 }
 
 export async function getProfileProjects(login: string | undefined) {
-  const path = login
-    ? `/intra/users/${encodeURIComponent(login)}/projects?page_size=6`
-    : "/me/intra/projects?page_size=6"
-  const response = await apiRequest<ProjectsResponse>(path)
+  const pageSize = 100
+  const items: ProfileProject[] = []
+  let page = 1
 
-  return response.items
+  while (page <= 20) {
+    const query = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+    })
+    const path = login
+      ? `/intra/users/${encodeURIComponent(login)}/projects?${query}`
+      : `/me/intra/projects?${query}`
+    const response = await apiRequest<ProjectsResponse>(path)
+    items.push(...response.items)
+
+    if (response.items.length < pageSize) break
+    if (response.meta.total != null && items.length >= response.meta.total) break
+    page += 1
+  }
+
+  return items.sort((first, second) =>
+    (first.project_name ?? "").localeCompare(second.project_name ?? "", "fr", {
+      sensitivity: "base",
+    }),
+  )
 }
 
 export async function getMyProjectsPage(page: number, pageSize: number) {

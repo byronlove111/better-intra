@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Link, NavLink, useLocation } from "react-router-dom"
 
+import logo from "@/assets/logo.png"
 import {
   Avatar,
   AvatarFallback,
@@ -229,9 +230,11 @@ export function AppSidebar({
               render={<Link to={items[0]?.to ?? "/dashboard"} />}
               tooltip="BetterIntra"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <span className="text-sm font-semibold">BI</span>
-              </div>
+              <img
+                src={logo}
+                alt="BetterIntra"
+                className="size-7 shrink-0 bg-transparent object-contain"
+              />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">BetterIntra</span>
                 <span className="truncate text-xs text-muted-foreground">
