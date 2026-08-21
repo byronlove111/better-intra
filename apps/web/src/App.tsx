@@ -2,10 +2,11 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom"
 
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { AppLayout } from "@/layouts/AppLayout"
+import { AgendaPage } from "@/pages/AgendaPage"
+import { ChatPage } from "@/pages/ChatPage"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { EvaluationsPage } from "@/pages/EvaluationsPage"
 import { FriendsPage } from "@/pages/FriendsPage"
-import { ChatPage } from "@/pages/ChatPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { ProfilePage } from "@/pages/ProfilePage"
@@ -48,6 +49,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:login" element={<ProfilePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/conversations" element={<ChatPage />} />

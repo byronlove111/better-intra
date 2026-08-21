@@ -14,6 +14,7 @@ def _to_out(row: Event) -> EventOut:
         title=row.title,
         description=row.description,
         location=row.location,
+        url=row.url,
         begin_at=row.begin_at,
         end_at=row.end_at,
         created_at=row.created_at,
@@ -28,6 +29,7 @@ async def create_event(db: Session, *, user: User, data: EventCreate) -> EventOu
         title=data.title.strip(),
         description=data.description,
         location=data.location,
+        url=data.url,
         begin_at=data.begin_at,
         end_at=data.end_at,
     )
@@ -45,18 +47,38 @@ async def create_event(db: Session, *, user: User, data: EventCreate) -> EventOu
             user_ids=recipient_ids,
             type=NotificationType.event,
             body=f"New event: {out.title} (by {who})",
-            url=f"/events/{out.id}",
+            url="/agenda",
         )
     return out
 
 
-def list_events(db: Session, *, limit: int = 100, offset: int = 0) -> list[EventOut]:
-    return [_to_out(r) for r in event_repository.list_all(db, limit=limit, offset=offset)]
+def list_events(
+    db: Session,
+    *,
+    creator_id: int | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[EventOut]:
+    rows = (
+        event_repository.list_by_creator(
+            db, creator_id=creator_id, limit=limit, offset=offset
+        )
+        if creator_id is not None
+        else event_repository.list_all(db, limit=limit, offset=offset)
+    )
+    return [_to_out(r) for r in rows]
 
 
-def get_event(db: Session, event_id: int) -> EventOut:
+def get_event(
+    db: Session,
+    event_id: int,
+    *,
+    owner: User | None = None,
+) -> EventOut:
     row = event_repository.get_by_id(db, event_id)
     if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    if owner is not None and row.creator_id != owner.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     return _to_out(row)
 

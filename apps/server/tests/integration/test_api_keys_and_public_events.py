@@ -82,7 +82,7 @@ def test_api_key_lifecycle_and_public_events_crud(
     assert updated.status_code == 200
     assert updated.json()["title"] == "Updated Meetup"
 
-    # Other user's key cannot mutate
+    # Other user's key cannot mutate or read owner-scoped resources
     other_key = _create_api_key(client, token_b, name="bob-key")["key"]
     forbidden = client.put(
         f"/api/v1/events/{event_id}",
@@ -90,6 +90,16 @@ def test_api_key_lifecycle_and_public_events_crud(
         json=_event_payload(title="Hijack"),
     )
     assert forbidden.status_code == 403
+
+    other_list = client.get("/api/v1/events", headers={"X-API-Key": other_key})
+    assert other_list.status_code == 200
+    assert all(e["id"] != event_id for e in other_list.json())
+
+    other_get = client.get(
+        f"/api/v1/events/{event_id}",
+        headers={"X-API-Key": other_key},
+    )
+    assert other_get.status_code == 404
 
     deleted = client.delete(f"/api/v1/events/{event_id}", headers={"X-API-Key": raw_key})
     assert deleted.status_code == 204
@@ -110,6 +120,16 @@ def test_public_event_rejects_bad_dates(client: TestClient, user_a: dict[str, An
         "/api/v1/events",
         headers={"X-API-Key": raw_key},
         json=_event_payload(begin_at=begin.isoformat(), end_at=begin.isoformat()),
+    )
+    assert response.status_code == 422
+
+
+def test_public_event_rejects_unsafe_url(client: TestClient, user_a: dict[str, Any]) -> None:
+    raw_key = _create_api_key(client, user_a["access_token"])["key"]
+    response = client.post(
+        "/api/v1/events",
+        headers={"X-API-Key": raw_key},
+        json=_event_payload(url="javascript:alert(1)"),
     )
     assert response.status_code == 422
 
