@@ -62,19 +62,17 @@ type PresenceResponse = {
   online: OnlineFriend[]
 }
 
-export type LogtimeDay = {
-  date: string
-  duration_hours: number
-}
-
-export type LogtimeResponse = {
-  total_hours: number
-  active_days: number
-  days: LogtimeDay[]
-}
-
 export async function getDashboardEvents() {
-  const response = await apiRequest<AgendaResponse>("/events?limit=5")
+  const now = new Date()
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  const search = new URLSearchParams({
+    begin_at: dayStart.toISOString(),
+    end_at: dayEnd.toISOString(),
+    limit: "50",
+  })
+
+  const response = await apiRequest<AgendaResponse>(`/events?${search.toString()}`)
   return response.items
 }
 
@@ -121,13 +119,4 @@ export async function getEvaluationsPage(
 export async function getDashboardOnlineFriends() {
   const response = await apiRequest<PresenceResponse>("/presence")
   return response.online
-}
-
-export function getDashboardLogtime(beginAt: string, endAt: string) {
-  const logtimeQuery = new URLSearchParams({
-    begin_at: beginAt,
-    end_at: endAt,
-  })
-
-  return apiRequest<LogtimeResponse>(`/analytics/logtime?${logtimeQuery}`)
 }
