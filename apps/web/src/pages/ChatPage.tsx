@@ -384,8 +384,8 @@ function NewChatComposer({ currentUserId }: { currentUserId: number }) {
 
   if (!toLogin) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <Card className="max-w-md">
+      <div className="flex w-full flex-1 items-center justify-center p-6">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Chat</CardTitle>
             <CardDescription>
@@ -469,8 +469,8 @@ export function ChatPage() {
     <section className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
       <aside
         className={cn(
-          "flex w-full shrink-0 flex-col border-b md:w-80 md:border-r md:border-b-0",
-          hasValidConversationId && "hidden md:flex",
+          "flex shrink-0 flex-col border-b md:w-80 md:border-r md:border-b-0",
+          hasValidConversationId ? "hidden md:flex" : "w-full",
         )}
       >
         <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -509,8 +509,8 @@ export function ChatPage() {
 
       <div
         className={cn(
-          "min-h-0 min-w-0 flex-1 flex-col",
-          hasValidConversationId ? "flex" : "hidden md:flex",
+          "flex min-h-0 min-w-0 w-full flex-1 flex-col",
+          !hasValidConversationId && "max-md:hidden",
         )}
       >
         {hasValidConversationId ? (
