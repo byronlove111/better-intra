@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Timer } from "lucide-react"
+import { useState } from "react"
+import { ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, Timer } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -9,10 +10,22 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  type LogtimeExportFormat,
+  exportMyLogtime,
+} from "@/features/profile/profile-api"
+import {
   type LogtimeData,
   getLogtimeColor,
   getMonthCalendar,
 } from "@/features/profile/profile-display"
+import { getApiErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 type LogtimeCardProps = {
@@ -26,6 +39,10 @@ type LogtimeCardProps = {
   onActivate?: () => void
   onPreviousMonth: () => void
   onNextMonth: () => void
+  /** Own analytics only (`/analytics/logtime/export.*`). */
+  canExport?: boolean
+  exportBeginAt?: string
+  exportEndAt?: string
 }
 
 export function LogtimeCard({
@@ -39,13 +56,39 @@ export function LogtimeCard({
   onActivate,
   onPreviousMonth,
   onNextMonth,
+  canExport = false,
+  exportBeginAt,
+  exportEndAt,
 }: LogtimeCardProps) {
+  const [exportPending, setExportPending] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
   const monthLabel = new Intl.DateTimeFormat("fr-FR", {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
   }).format(month)
   const calendar = logtime ? getMonthCalendar(month, logtime) : []
+  const exportReady =
+    canExport
+    && Boolean(exportBeginAt)
+    && Boolean(exportEndAt)
+    && isActivated
+    && !isLoading
+    && !isError
+
+  async function handleExport(format: LogtimeExportFormat) {
+    if (!exportBeginAt || !exportEndAt || exportPending) return
+    setExportPending(true)
+    setExportError(null)
+    try {
+      await exportMyLogtime(format, exportBeginAt, exportEndAt)
+    } catch (error) {
+      setExportError(getApiErrorMessage(error) ?? "Export impossible")
+    } finally {
+      setExportPending(false)
+    }
+  }
 
   if (!isActivated) {
     return (
@@ -105,7 +148,7 @@ export function LogtimeCard({
               : `${logtime?.total_hours ?? 0} h ce mois-ci · ${logtime?.active_days ?? 0} jours actifs`}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-3">
         {isError ? (
           <p className="text-sm text-muted-foreground">
             Les données de logtime n’ont pas pu être chargées.
@@ -149,6 +192,49 @@ export function LogtimeCard({
               <span>Plus</span>
             </div>
           </>
+        )}
+
+        {canExport && (
+          <div className="flex flex-col gap-2 border-t pt-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-fit"
+                    disabled={!exportReady || exportPending}
+                  />
+                }
+              >
+                <Download data-icon="inline-start" />
+                {exportPending ? "Export…" : "Exporter"}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    disabled={exportPending}
+                    onClick={() => void handleExport("csv")}
+                  >
+                    <FileSpreadsheet data-icon="inline-start" />
+                    CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={exportPending}
+                    onClick={() => void handleExport("pdf")}
+                  >
+                    <FileText data-icon="inline-start" />
+                    PDF
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {exportError && (
+              <p role="alert" className="text-sm text-destructive">
+                {exportError}
+              </p>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

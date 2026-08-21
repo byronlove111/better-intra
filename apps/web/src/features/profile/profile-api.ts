@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api"
+import { apiDownload, apiRequest } from "@/lib/api"
 
 type ProfileCursus = {
   name: string | null
@@ -135,4 +135,18 @@ export async function getProfileLogtime(
       duration_hours: Math.round((day.duration_seconds / 3600) * 100) / 100,
     })),
   }
+}
+
+export type LogtimeExportFormat = "csv" | "pdf"
+
+export function exportMyLogtime(
+  format: LogtimeExportFormat,
+  beginAt: string,
+  endAt: string,
+) {
+  const query = new URLSearchParams({ begin_at: beginAt, end_at: endAt })
+  const extension = format === "csv" ? "csv" : "pdf"
+  return apiDownload(`/analytics/logtime/export.${extension}?${query}`, {
+    filename: `logtime.${extension}`,
+  })
 }

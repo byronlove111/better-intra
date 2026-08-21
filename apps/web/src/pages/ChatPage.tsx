@@ -466,7 +466,7 @@ export function ChatPage() {
   const listError = getApiErrorMessage(conversationsRequest.error)
 
   return (
-    <section className="-mx-4 -mb-4 flex h-[calc(100dvh-4rem)] flex-col md:-mx-8 md:-mb-8 md:flex-row">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
       <aside
         className={cn(
           "flex w-full shrink-0 flex-col border-b md:w-80 md:border-r md:border-b-0",

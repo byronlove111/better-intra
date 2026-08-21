@@ -82,9 +82,18 @@ export function AppLayout() {
     navigate("/login", { replace: true })
   }
 
+  const isChatRoute = location.pathname.startsWith("/conversations")
+
   return (
-    <div className="min-h-screen bg-muted/40 md:grid md:grid-cols-[220px_1fr]">
-      <aside className="border-b bg-background md:min-h-screen md:border-r md:border-b-0">
+    <div
+      className={cn(
+        "bg-muted/40 md:grid md:h-svh md:grid-cols-[220px_1fr] md:overflow-hidden",
+        isChatRoute
+          ? "flex h-svh flex-col overflow-hidden md:grid"
+          : "min-h-svh",
+      )}
+    >
+      <aside className="border-b bg-background md:min-h-0 md:overflow-y-auto md:border-r md:border-b-0">
         <div className="flex h-16 items-center justify-between px-4 md:px-6">
           <span className="text-lg font-semibold">BetterIntra</span>
 
@@ -191,8 +200,13 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <div>
-        <header className="flex h-16 items-center gap-3 border-b bg-background px-4 md:px-8">
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-col",
+          isChatRoute && "flex-1",
+        )}
+      >
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-8">
           <div className="flex-1">
             <UserSearch
               isPreview={isPreview}
@@ -237,7 +251,14 @@ export function AppLayout() {
           </DropdownMenu>
         </header>
 
-        <main className="p-4 md:p-8">
+        <main
+          className={cn(
+            "min-h-0 flex-1",
+            isChatRoute
+              ? "flex flex-col overflow-hidden p-0"
+              : "overflow-auto p-4 md:p-8",
+          )}
+        >
           <Outlet />
         </main>
       </div>

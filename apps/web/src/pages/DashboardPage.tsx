@@ -599,6 +599,9 @@ export function DashboardPage() {
               onActivate={() => setIsLogtimeActivated(true)}
               onPreviousMonth={() => changeMonth(-1)}
               onNextMonth={() => changeMonth(1)}
+              canExport={!isPreview}
+              exportBeginAt={monthRange.beginAt}
+              exportEndAt={monthRange.endAt}
             />
           </div>
         </>

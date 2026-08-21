@@ -365,6 +365,9 @@ export function ProfilePage() {
             onActivate={() => setLogtimeProfile(profileKey)}
             onPreviousMonth={() => changeMonth(-1)}
             onNextMonth={() => changeMonth(1)}
+            canExport={!isPreview && (isOwnProfile || viewingOwnLogin)}
+            exportBeginAt={monthRange.beginAt}
+            exportEndAt={monthRange.endAt}
           />
 
           <Card size="sm">
