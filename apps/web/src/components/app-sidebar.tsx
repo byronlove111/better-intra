@@ -68,28 +68,10 @@ function buildNavItems(isPreview: boolean): NavItem[] {
       match: (pathname) => pathname === "/dashboard",
     },
     {
-      title: "Projets",
-      to: isPreview ? "/projects?preview=projects" : "/projects",
-      icon: FolderKanban,
-      match: (pathname) => pathname === "/projects",
-    },
-    {
-      title: "Agenda",
-      to: "/agenda",
-      icon: CalendarDays,
-      match: (pathname) => pathname === "/agenda",
-    },
-    {
-      title: "Évaluations",
-      to: isPreview ? "/evaluations?preview=evaluations" : "/evaluations",
-      icon: ClipboardCheck,
-      match: (pathname) => pathname === "/evaluations",
-    },
-    {
-      title: "Logtime",
-      to: "/logtime",
-      icon: Timer,
-      match: (pathname) => pathname === "/logtime",
+      title: "Messages",
+      to: isPreview ? "/conversations?preview=message" : "/conversations",
+      icon: MessageCircle,
+      match: (pathname) => pathname.startsWith("/conversations"),
     },
     {
       title: "Amis",
@@ -98,10 +80,28 @@ function buildNavItems(isPreview: boolean): NavItem[] {
       match: (pathname) => pathname === "/friends",
     },
     {
-      title: "Messages",
-      to: isPreview ? "/conversations?preview=message" : "/conversations",
-      icon: MessageCircle,
-      match: (pathname) => pathname.startsWith("/conversations"),
+      title: "Agenda",
+      to: "/agenda",
+      icon: CalendarDays,
+      match: (pathname) => pathname === "/agenda",
+    },
+    {
+      title: "Projets",
+      to: isPreview ? "/projects?preview=projects" : "/projects",
+      icon: FolderKanban,
+      match: (pathname) => pathname === "/projects",
+    },
+    {
+      title: "Logtime",
+      to: "/logtime",
+      icon: Timer,
+      match: (pathname) => pathname === "/logtime",
+    },
+    {
+      title: "Évaluations",
+      to: isPreview ? "/evaluations?preview=evaluations" : "/evaluations",
+      icon: ClipboardCheck,
+      match: (pathname) => pathname === "/evaluations",
     },
   ]
 }
