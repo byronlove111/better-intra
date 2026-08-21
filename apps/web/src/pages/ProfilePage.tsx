@@ -180,6 +180,10 @@ export function ProfilePage() {
       !isPreview
       && hasLoadedIntraProfile
       && logtimeProfile === profileKey,
+    // Data Major: poll while logtime is visible (42 API has no realtime push).
+    refetchInterval:
+      !isPreview && logtimeProfile === profileKey ? 600_000 : false,
+    refetchIntervalInBackground: false,
   })
 
   const projectsRequest = useQuery({
@@ -477,6 +481,7 @@ export function ProfilePage() {
             canExport={!isPreview && (isOwnProfile || viewingOwnLogin)}
             exportBeginAt={monthRange.beginAt}
             exportEndAt={monthRange.endAt}
+            liveUpdates={!isPreview && isLogtimeActivated}
           />
 
           <Card size="sm">

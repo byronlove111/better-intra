@@ -150,6 +150,9 @@ export function DashboardPage() {
     queryKey: ["profile", "me", "logtime", monthRange.beginAt],
     queryFn: () => getDashboardLogtime(monthRange.beginAt, monthRange.endAt),
     enabled: dashboardQueriesEnabled && isLogtimeActivated,
+    // Data Major: keep analytics fresh while the card is open (Intra has no push).
+    refetchInterval: dashboardQueriesEnabled && isLogtimeActivated ? 600_000 : false,
+    refetchIntervalInBackground: false,
   })
 
   const oauthStatus = searchParams.get("intra")
@@ -609,6 +612,7 @@ export function DashboardPage() {
               canExport={!isPreview}
               exportBeginAt={monthRange.beginAt}
               exportEndAt={monthRange.endAt}
+              liveUpdates={!isPreview && isLogtimeActivated}
             />
           </div>
         </>
