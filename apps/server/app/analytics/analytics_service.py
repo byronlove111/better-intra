@@ -207,7 +207,7 @@ def _fmt_hours(seconds: int) -> str:
 
 
 def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
-    """Polished one-pager-style report (multi-page if many days)."""
+    """A4 logtime report — one page when possible, more pages if tables overflow."""
 
     # Palette (RGB) — slate + teal, no purple cliché
     ink = (24, 32, 40)
@@ -219,7 +219,8 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
     zebra = (250, 252, 253)
 
     pdf = FPDF(unit="mm", format="A4")
-    pdf.set_auto_page_break(auto=True, margin=18)
+    # Leave room for footer so content never auto-breaks into an empty trailing page.
+    pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
     page_w = pdf.w - pdf.l_margin - pdf.r_margin
 
@@ -240,7 +241,11 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
     pdf.cell(page_w * 0.5, 7, f"@{data.login}", new_x="RIGHT")
     pdf.set_font("Helvetica", size=10)
     pdf.set_text_color(*muted)
-    period = f"{data.begin_at.date().isoformat()}  to  {data.end_at.date().isoformat()}"
+    period = (
+        f"{data.begin_at.astimezone(UTC).date().isoformat()}"
+        f"  to  "
+        f"{data.end_at.astimezone(UTC).date().isoformat()}"
+    )
     pdf.cell(page_w * 0.5, 7, period, align="R", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
@@ -260,7 +265,6 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
         pdf.set_fill_color(*card_bg)
         pdf.set_draw_color(*line)
         pdf.rect(x, y0, card_w, card_h, style="FD")
-        # accent strip
         pdf.set_fill_color(*accent)
         pdf.rect(x, y0, 1.2, card_h, style="F")
         pdf.set_xy(x + 4, y0 + 4)
@@ -288,9 +292,6 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
     short_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     for i, row in enumerate(data.by_weekday):
         y = pdf.get_y()
-        if y > pdf.h - 30:
-            pdf.add_page()
-            y = pdf.get_y()
         pdf.set_font("Helvetica", size=9)
         pdf.set_text_color(*ink)
         pdf.set_xy(pdf.l_margin, y)
@@ -308,13 +309,12 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
 
     pdf.ln(6)
 
-    # --- Weekly summary (compact) ---
+    # --- Weekly summary ---
     if data.by_week:
         pdf.set_text_color(*ink)
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(page_w, 7, "Weekly totals", new_x="LMARGIN", new_y="NEXT")
         pdf.ln(1)
-        # table header
         pdf.set_fill_color(*band)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", "B", 9)
@@ -322,8 +322,6 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
         pdf.cell(page_w * 0.45, 7, "Time  ", border=0, fill=True, align="R", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", size=9)
         for idx, week in enumerate(data.by_week):
-            if pdf.get_y() > pdf.h - 25:
-                pdf.add_page()
             bg = zebra if idx % 2 else (255, 255, 255)
             pdf.set_fill_color(*bg)
             pdf.set_text_color(*ink)
@@ -340,7 +338,7 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
             )
         pdf.ln(6)
 
-    # --- Daily table ---
+    # --- Daily table (continues on next pages if needed) ---
     pdf.set_text_color(*ink)
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(page_w, 7, "Daily breakdown", new_x="LMARGIN", new_y="NEXT")
@@ -354,25 +352,23 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
         col_date = page_w * 0.40
         col_hours = page_w * 0.30
         col_bar = page_w * 0.30
-        pdf.set_fill_color(*band)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(col_date, 7, "  Date", fill=True)
-        pdf.cell(col_hours, 7, "Duration", fill=True, align="R")
-        pdf.cell(col_bar, 7, "  Intensity", fill=True, new_x="LMARGIN", new_y="NEXT")
 
+        def _draw_daily_header() -> None:
+            pdf.set_fill_color(*band)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.cell(col_date, 7, "  Date", fill=True)
+            pdf.cell(col_hours, 7, "Duration", fill=True, align="R")
+            pdf.cell(col_bar, 7, "  Intensity", fill=True, new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", size=9)
+
+        _draw_daily_header()
         max_day = max((d.duration_seconds for d in data.days), default=0) or 1
-        pdf.set_font("Helvetica", size=9)
         for idx, day in enumerate(data.days):
-            if pdf.get_y() > pdf.h - 22:
+            # Manual break before a row that would collide with the footer zone.
+            if pdf.get_y() > pdf.h - 28:
                 pdf.add_page()
-                pdf.set_fill_color(*band)
-                pdf.set_text_color(255, 255, 255)
-                pdf.set_font("Helvetica", "B", 9)
-                pdf.cell(col_date, 7, "  Date", fill=True)
-                pdf.cell(col_hours, 7, "Duration", fill=True, align="R")
-                pdf.cell(col_bar, 7, "  Intensity", fill=True, new_x="LMARGIN", new_y="NEXT")
-                pdf.set_font("Helvetica", size=9)
+                _draw_daily_header()
 
             bg = zebra if idx % 2 else (255, 255, 255)
             y = pdf.get_y()
@@ -383,7 +379,6 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
             pdf.cell(col_date, 6.5, f"  {day.date}")
             pdf.set_text_color(*muted)
             pdf.cell(col_hours, 6.5, _fmt_hours(day.duration_seconds), align="R")
-            # mini intensity bar
             intensity_w = (col_bar - 8) * (day.duration_seconds / max_day)
             bx = pdf.l_margin + col_date + col_hours + 4
             pdf.set_fill_color(*line)
@@ -393,7 +388,8 @@ def analytics_to_pdf(data: LogtimeAnalyticsOut) -> bytes:
                 pdf.rect(bx, y + 2.0, max(intensity_w, 0.6), 2.5, style="F")
             pdf.set_y(y + 6.5)
 
-    # --- Footer on each page ---
+    # --- Footer on each generated page (disable auto-break so we don't spawn an empty page) ---
+    pdf.set_auto_page_break(auto=False)
     page_count = pdf.pages_count
     for page_n in range(1, page_count + 1):
         pdf.page = page_n
