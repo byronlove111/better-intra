@@ -8,6 +8,7 @@ dependencies = [
     "email-validator>=2",
     "fastapi[standard]>=0.139.2",
     "fpdf2>=2.8.7",
+    "pillow>=11",
     "psycopg[binary]>=3.3.4",
     "pwdlib[argon2]>=0.3.0",
     "pydantic-settings>=2.14.2",

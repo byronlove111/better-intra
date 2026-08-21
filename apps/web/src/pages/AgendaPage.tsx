@@ -64,7 +64,7 @@ import {
 } from "@/features/agenda/EventForm"
 import { EventMarkdown } from "@/features/agenda/EventMarkdown"
 import { getInitials } from "@/features/profile/profile-display"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 type FormMode =
@@ -485,7 +485,7 @@ export function AgendaPage() {
                   <div className="flex items-center gap-3 rounded-lg border p-3">
                     <Avatar>
                       <AvatarImage
-                        src={selectedEvent.creator.avatar_url ?? undefined}
+                        src={resolveMediaUrl(selectedEvent.creator.avatar_url)}
                         alt=""
                       />
                       <AvatarFallback>

@@ -132,6 +132,26 @@ def forty_two_get(
     return payload, headers
 
 
+def forty_two_get_cached(
+    access_token: str,
+    path: str,
+    params: dict[str, Any] | None = None,
+    *,
+    cache_key: str,
+    ttl_seconds: float = 600.0,
+) -> tuple[Any, dict[str, str]]:
+    """Same as forty_two_get, with a short in-memory TTL cache."""
+    from app.intra.intra_cache import cache_get, cache_set
+
+    cached = cache_get(cache_key)
+    if isinstance(cached, tuple) and len(cached) == 2:
+        return cached  # type: ignore[return-value]
+
+    result = forty_two_get(access_token, path, params)
+    cache_set(cache_key, result, ttl_seconds=ttl_seconds)
+    return result
+
+
 def page_meta_from_headers(
     headers: dict[str, str],
     *,
@@ -144,12 +164,20 @@ def page_meta_from_headers(
 
 
 def fetch_intra_user(access_token: str, login_or_id: str) -> dict[str, Any]:
+    from app.intra.intra_cache import cache_get, cache_set
+
+    key = f"intra:user:{str(login_or_id).lower()}"
+    cached = cache_get(key)
+    if isinstance(cached, dict) and cached.get("id") is not None:
+        return cached
+
     payload, _ = forty_two_get(access_token, f"/users/{login_or_id}")
     if not isinstance(payload, dict) or payload.get("id") is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unexpected user payload from 42 API",
         )
+    cache_set(key, payload)
     return payload
 
 
@@ -158,10 +186,22 @@ def resolve_forty_two_user_id(access_token: str, login_or_id: str) -> int:
     return int(user["id"])
 
 
-def fetch_intra_me(access_token: str) -> dict[str, Any]:
+def fetch_intra_me(access_token: str, *, cache_key: str | None = None) -> dict[str, Any]:
+    if cache_key is not None:
+        from app.intra.intra_cache import cache_get, cache_set
+
+        cached = cache_get(f"intra:me:{cache_key}")
+        if isinstance(cached, dict):
+            return cached
+
     payload, _ = forty_two_get(access_token, "/me")
     if not isinstance(payload, dict):
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unexpected /me payload")
+
+    if cache_key is not None:
+        from app.intra.intra_cache import cache_set
+
+        cache_set(f"intra:me:{cache_key}", payload)
     return payload
 
 

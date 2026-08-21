@@ -6,6 +6,7 @@ from app.db import SessionLocal
 from app.friends import friend_repository
 from app.realtime.ws_manager import PresenceUser, ws_manager
 from app.users import user_repository
+from app.users.user_service import effective_avatar_url
 
 router = APIRouter(tags=["realtime"])
 
@@ -44,7 +45,7 @@ async def websocket_endpoint(
             user_id=user.id,
             login=user.login,
             display_name=user.display_name,
-            avatar_url=user.avatar_url,
+            avatar_url=effective_avatar_url(user),
         )
         following_user_ids = friend_repository.list_following_user_ids(db, follower_id=user.id)
         follower_user_ids = friend_repository.list_follower_user_ids(

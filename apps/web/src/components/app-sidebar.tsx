@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/sidebar"
 import type { AuthUser } from "@/features/auth/auth-api"
 import { getInitials } from "@/features/profile/profile-display"
+import { resolveMediaUrl } from "@/lib/api"
 
 type NavItem = {
   title: string
@@ -138,7 +139,7 @@ function NavUser({
           >
             <Avatar className="size-8 rounded-lg">
               <AvatarImage
-                src={currentUser?.avatar_url ?? undefined}
+                src={resolveMediaUrl(currentUser?.avatar_url, currentUser?.updated_at)}
                 alt={displayName}
               />
               <AvatarFallback className="rounded-lg">
@@ -166,7 +167,7 @@ function NavUser({
               >
                 <Avatar className="size-8 rounded-lg">
                   <AvatarImage
-                    src={currentUser?.avatar_url ?? undefined}
+                    src={resolveMediaUrl(currentUser?.avatar_url, currentUser?.updated_at)}
                     alt={displayName}
                   />
                   <AvatarFallback className="rounded-lg">

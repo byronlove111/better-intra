@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.deps import get_current_user, get_db, require_intra_linked
@@ -6,7 +6,15 @@ from app.users import user_repository
 from app.users.gdpr_service import erase_user_data
 from app.users.user_model import User
 from app.users.user_schemas import GdprErasureOut, UpdateProfileRequest, UserProfileOut
-from app.users.user_service import build_my_unified_profile, build_profile_by_login, require_bio_allowed
+from app.users.user_service import (
+    build_my_unified_profile,
+    build_profile_by_login,
+    clear_my_avatar,
+    clear_my_banner,
+    require_bio_allowed,
+    upload_my_avatar,
+    upload_my_banner,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -46,7 +54,58 @@ def update_my_profile(
 ) -> UserProfileOut:
     require_bio_allowed(current_user)
     user = user_repository.update_bio(db, current_user, bio=body.bio.strip())
-    return build_my_unified_profile(db, user=user)
+    # Bio is local DB only — never refresh Intra (avoids 42 rate limits).
+    return build_my_unified_profile(db, user=user, refresh_intra=False)
+
+
+@router.post(
+    "/me/avatar",
+    response_model=UserProfileOut,
+    summary="Upload my custom avatar",
+)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserProfileOut:
+    return await upload_my_avatar(db, current_user, file)
+
+
+@router.delete(
+    "/me/avatar",
+    response_model=UserProfileOut,
+    summary="Remove my custom avatar (fallback to Intra)",
+)
+async def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserProfileOut:
+    return await clear_my_avatar(db, current_user)
+
+
+@router.post(
+    "/me/banner",
+    response_model=UserProfileOut,
+    summary="Upload my profile banner",
+)
+async def upload_banner(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserProfileOut:
+    return await upload_my_banner(db, current_user, file)
+
+
+@router.delete(
+    "/me/banner",
+    response_model=UserProfileOut,
+    summary="Remove my profile banner",
+)
+async def delete_banner(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserProfileOut:
+    return await clear_my_banner(db, current_user)
 
 
 @router.delete(

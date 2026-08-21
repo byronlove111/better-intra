@@ -42,7 +42,7 @@ import {
   chatPreviewMessages,
 } from "@/features/chat/chat-preview"
 import { getInitials } from "@/features/profile/profile-display"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 function formatListTime(value: string) {
@@ -77,7 +77,7 @@ function ConversationListItem({
       <div className="relative shrink-0">
         <Avatar>
           <AvatarImage
-            src={peer.avatar_url ?? undefined}
+            src={resolveMediaUrl(peer.avatar_url)}
             alt={`Photo de ${peer.login}`}
           />
           <AvatarFallback>
@@ -205,7 +205,7 @@ function ChatThreadShell({
         ) : null}
         <Avatar>
           <AvatarImage
-            src={peer.avatar_url ?? undefined}
+            src={resolveMediaUrl(peer.avatar_url)}
             alt={`Photo de ${peer.login}`}
           />
           <AvatarFallback>

@@ -14,6 +14,8 @@ class UserOut(BaseModel):
     login: str | None
     display_name: str | None
     avatar_url: str | None
+    banner_url: str | None = None
+    has_custom_avatar: bool = False
     bio: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -31,6 +33,8 @@ class UserProfileOut(BaseModel):
     login: str | None = None
     display_name: str | None = None
     avatar_url: str | None = None
+    banner_url: str | None = None
+    has_custom_avatar: bool = False
     forty_two_id: int | None = None
     intra: IntraProfileOut | None = None
 

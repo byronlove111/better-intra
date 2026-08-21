@@ -7,7 +7,7 @@ from app.agenda.agenda_schemas import AgendaEventOut, AgendaSource
 from app.intra.intra_service import (
     build_event,
     fetch_intra_me,
-    forty_two_get,
+    forty_two_get_cached,
     get_valid_forty_two_access_token,
     primary_campus_id,
 )
@@ -31,7 +31,7 @@ class IntraAgendaSource:
             return []
 
         access_token = get_valid_forty_two_access_token(db, user)
-        me = fetch_intra_me(access_token)
+        me = fetch_intra_me(access_token, cache_key=str(user.id))
         campus_id = primary_campus_id(me)
         if campus_id is None:
             return []
@@ -55,7 +55,16 @@ class IntraAgendaSource:
             far_begin = end_at.replace(year=max(end_at.year - 5, 2000))
             params["range[begin_at]"] = f"{far_begin.isoformat()},{end_at.isoformat()}"
 
-        payload, _ = forty_two_get(access_token, f"/campus/{campus_id}/events", params)
+        range_key = params.get("range[begin_at]", "")
+        payload, _ = forty_two_get_cached(
+            access_token,
+            f"/campus/{campus_id}/events",
+            params,
+            cache_key=(
+                f"events:{campus_id}:1:100:begin_at:"
+                f"{kind or ''}:{(q or '').strip()}:{range_key}"
+            ),
+        )
         if not isinstance(payload, list):
             return []
 

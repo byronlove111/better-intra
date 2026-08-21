@@ -61,6 +61,93 @@ export function getMonthRange(month: Date) {
   }
 }
 
+/** Last N calendar months including the current one (UTC). */
+export function getLastMonthsRange(months = 3, now = new Date()) {
+  const end = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+  )
+  const begin = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1),
+  )
+
+  return {
+    beginAt: begin.toISOString(),
+    endAt: end.toISOString(),
+    begin,
+    end,
+    months,
+  }
+}
+
+/** @deprecated Prefer getLastMonthsRange(3) */
+export function getLastYearRange(now = new Date()) {
+  return getLastMonthsRange(12, now)
+}
+
+/** List UTC month starts covered by [begin, end). */
+export function listMonthsInRange(begin: Date, end: Date) {
+  const months: Date[] = []
+  const cursor = new Date(
+    Date.UTC(begin.getUTCFullYear(), begin.getUTCMonth(), 1),
+  )
+  const limit = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1))
+
+  while (cursor <= limit) {
+    months.push(new Date(cursor))
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1)
+  }
+
+  return months
+}
+
+export type ContributionDay = {
+  date: string
+  hours: number
+} | null
+
+/** GitHub-style weeks (Mon→Sun columns of days). */
+export function buildContributionWeeks(
+  logtime: LogtimeData,
+  begin: Date,
+  end: Date,
+): ContributionDay[][] {
+  const hoursByDate = new Map(
+    logtime.days.map((day) => [day.date, day.duration_hours]),
+  )
+
+  const rangeStart = new Date(
+    Date.UTC(begin.getUTCFullYear(), begin.getUTCMonth(), begin.getUTCDate()),
+  )
+  const rangeEnd = new Date(
+    Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
+  )
+
+  const cursor = new Date(rangeStart)
+  const mondayOffset = (cursor.getUTCDay() + 6) % 7
+  cursor.setUTCDate(cursor.getUTCDate() - mondayOffset)
+
+  const weeks: ContributionDay[][] = []
+
+  while (cursor < rangeEnd) {
+    const week: ContributionDay[] = []
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const dateKey = cursor.toISOString().slice(0, 10)
+      if (cursor < rangeStart || cursor >= rangeEnd) {
+        week.push(null)
+      } else {
+        week.push({
+          date: dateKey,
+          hours: hoursByDate.get(dateKey) ?? 0,
+        })
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+    weeks.push(week)
+  }
+
+  return weeks
+}
+
 export function getMonthCalendar(month: Date, logtime: LogtimeData) {
   const hoursByDate = new Map(
     logtime.days.map((day) => [day.date, day.duration_hours]),
@@ -95,6 +182,35 @@ export function getPreviewLogtime(month: Date): LogtimeData {
 
   return {
     total_hours: days.reduce((total, day) => total + day.duration_hours, 0),
+    active_days: days.filter((day) => day.duration_hours > 0).length,
+    days,
+  }
+}
+
+export function getPreviewYearLogtime(begin: Date, end: Date): LogtimeData {
+  const days: LogtimeData["days"] = []
+  const cursor = new Date(
+    Date.UTC(begin.getUTCFullYear(), begin.getUTCMonth(), begin.getUTCDate()),
+  )
+  const rangeEnd = new Date(
+    Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
+  )
+  let index = 0
+
+  while (cursor < rangeEnd) {
+    const hours = index % 7 === 0 ? 0 : ((index % 5) + 1) * 1.8
+    days.push({
+      date: cursor.toISOString().slice(0, 10),
+      duration_hours: hours,
+    })
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+    index += 1
+  }
+
+  return {
+    total_hours: Math.round(
+      days.reduce((total, day) => total + day.duration_hours, 0) * 100,
+    ) / 100,
     active_days: days.filter((day) => day.duration_hours > 0).length,
     days,
   }

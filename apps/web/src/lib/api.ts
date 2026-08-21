@@ -144,6 +144,86 @@ export function getApiBaseUrl() {
   return API_URL
 }
 
+/** Resolve API-relative media paths (`/media/...`) to absolute URLs. */
+export function resolveMediaUrl(
+  url: string | null | undefined,
+  cacheBust?: string | null,
+) {
+  if (!url) return undefined
+  let resolved = url
+  if (
+    !(
+      url.startsWith("http://")
+      || url.startsWith("https://")
+      || url.startsWith("blob:")
+      || url.startsWith("data:")
+    )
+  ) {
+    resolved = url.startsWith("/") ? `${API_URL}${url}` : url
+  }
+  if (cacheBust && resolved.includes("/media/")) {
+    const sep = resolved.includes("?") ? "&" : "?"
+    return `${resolved}${sep}v=${encodeURIComponent(cacheBust)}`
+  }
+  return resolved
+}
+
+/**
+ * Authenticated multipart upload (avatar / banner). Do not set Content-Type —
+ * the browser adds the multipart boundary.
+ */
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: {
+    requiresAuth?: boolean
+    retryOnUnauthorized?: boolean
+  } = {},
+): Promise<T> {
+  const {
+    requiresAuth = true,
+    retryOnUnauthorized = true,
+  } = options
+  const accessToken = getAccessToken()
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    body: formData,
+    headers: {
+      ...(requiresAuth && accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : {}),
+    },
+  })
+
+  if (response.status === 401 && requiresAuth && retryOnUnauthorized) {
+    try {
+      await refreshTokens()
+      return apiUpload<T>(path, formData, {
+        requiresAuth,
+        retryOnUnauthorized: false,
+      })
+    } catch {
+      clearTokens()
+    }
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorBody | {
+      detail?: string | { msg?: string }[]
+    }
+    let message = "Une erreur est survenue"
+    if (typeof body.detail === "string") {
+      message = body.detail
+    } else if (Array.isArray(body.detail) && body.detail[0]?.msg) {
+      message = body.detail[0].msg
+    }
+    throw new ApiError(response.status, message)
+  }
+
+  return (await response.json()) as T
+}
+
 /**
  * Authenticated file download (CSV/PDF, etc.). Triggers a browser save dialog.
  */

@@ -11,6 +11,7 @@ from app.intra.intra_service import fetch_intra_user, get_valid_forty_two_access
 from app.realtime.ws_manager import ws_manager
 from app.users import user_repository
 from app.users.user_model import User
+from app.users.user_service import effective_avatar_url
 
 
 def _friend_from_person(person: IntraPerson, followed_at, bi_user: User | None) -> FriendOut:
@@ -19,7 +20,11 @@ def _friend_from_person(person: IntraPerson, followed_at, bi_user: User | None) 
         forty_two_id=person.forty_two_id,
         login=person.login,
         display_name=person.display_name or (bi_user.display_name if bi_user else None),
-        avatar_url=person.avatar_url or (bi_user.avatar_url if bi_user else None),
+        avatar_url=(
+            effective_avatar_url(bi_user)
+            if bi_user
+            else person.avatar_url
+        ),
         followed_at=followed_at,
         is_betterintra_linked=linked,
         betterintra_user_id=bi_user.id if bi_user else None,
@@ -34,7 +39,7 @@ def _friend_from_follower_user(user: User, followed_at) -> FriendOut:
         forty_two_id=int(user.forty_two_id) if user.forty_two_id is not None else 0,
         login=user.login or "",
         display_name=user.display_name,
-        avatar_url=user.avatar_url,
+        avatar_url=effective_avatar_url(user),
         followed_at=followed_at,
         is_betterintra_linked=True,
         betterintra_user_id=user.id,

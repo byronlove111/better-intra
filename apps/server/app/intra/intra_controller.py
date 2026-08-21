@@ -24,7 +24,7 @@ from app.intra.intra_service import (
     build_user_summary,
     fetch_intra_me,
     fetch_intra_user,
-    forty_two_get,
+    forty_two_get_cached,
     get_valid_forty_two_access_token,
     page_meta_from_headers,
     primary_campus_id,
@@ -57,14 +57,16 @@ def _projects_page(
     page_size: int,
     sort: str,
 ) -> IntraProjectsPage:
-    payload, headers = forty_two_get(
+    params = {
+        "page[number]": page,
+        "page[size]": page_size,
+        "sort": sort,
+    }
+    payload, headers = forty_two_get_cached(
         access_token,
         f"/users/{forty_two_id}/projects_users",
-        {
-            "page[number]": page,
-            "page[size]": page_size,
-            "sort": sort,
-        },
+        params,
+        cache_key=f"projects:{forty_two_id}:{page}:{page_size}:{sort}",
     )
     items = [build_project(item) for item in payload] if isinstance(payload, list) else []
     return IntraProjectsPage.model_validate(
@@ -98,7 +100,12 @@ def _evaluations_page(
     totals: list[int] = []
     for current_role in roles:
         path = f"/users/{forty_two_id}/scale_teams/as_{current_role}"
-        payload, headers = forty_two_get(access_token, path, params)
+        payload, headers = forty_two_get_cached(
+            access_token,
+            path,
+            params,
+            cache_key=f"evals:{forty_two_id}:{current_role}:{page}:{page_size}:{sort}",
+        )
         if isinstance(payload, list):
             items.extend(build_evaluation(item, role=current_role) for item in payload)
         page_meta = page_meta_from_headers(headers, page=page, page_size=page_size)
@@ -133,7 +140,16 @@ def _logtime(
     if begin_at is not None and end_at is not None:
         params["range[begin_at]"] = f"{begin_at.isoformat()},{end_at.isoformat()}"
 
-    payload, _ = forty_two_get(access_token, f"/users/{forty_two_id}/locations", params)
+    cache_key = (
+        f"locations:{forty_two_id}:{page}:{page_size}:"
+        f"{begin_at.isoformat() if begin_at else ''}:{end_at.isoformat() if end_at else ''}"
+    )
+    payload, _ = forty_two_get_cached(
+        access_token,
+        f"/users/{forty_two_id}/locations",
+        params,
+        cache_key=cache_key,
+    )
     locations = payload if isinstance(payload, list) else []
     return IntraLogtimeOut.model_validate(
         build_logtime(locations, begin_at=begin_at, end_at=end_at)
@@ -159,7 +175,7 @@ def get_my_intra_profile(
     current_user: User = Depends(require_intra_linked),
 ) -> IntraProfileOut:
     access_token = get_valid_forty_two_access_token(db, current_user)
-    me = fetch_intra_me(access_token)
+    me = fetch_intra_me(access_token, cache_key=str(current_user.id))
     return IntraProfileOut.model_validate(build_intra_profile(me))
 
 
@@ -221,7 +237,7 @@ def get_intra_events(
 
     resolved_campus_id = campus_id
     if resolved_campus_id is None:
-        me = fetch_intra_me(access_token)
+        me = fetch_intra_me(access_token, cache_key=str(current_user.id))
         resolved_campus_id = primary_campus_id(me)
     if resolved_campus_id is None:
         return IntraEventsPage.model_validate(
@@ -240,10 +256,15 @@ def get_intra_events(
     if begin_at is not None and end_at is not None:
         params["range[begin_at]"] = f"{begin_at.isoformat()},{end_at.isoformat()}"
 
-    payload, headers = forty_two_get(
+    range_key = params.get("range[begin_at]", "")
+    payload, headers = forty_two_get_cached(
         access_token,
         f"/campus/{resolved_campus_id}/events",
         params,
+        cache_key=(
+            f"events:{resolved_campus_id}:{page}:{page_size}:{sort}:"
+            f"{kind or ''}:{name or ''}:{range_key}"
+        ),
     )
     items = [build_event(item) for item in payload] if isinstance(payload, list) else []
     return IntraEventsPage.model_validate(
@@ -347,7 +368,13 @@ def search_intra_users(
     else:
         params["search[login]"] = q
 
-    payload, headers = forty_two_get(access_token, "/users", params)
+    payload, headers = forty_two_get_cached(
+        access_token,
+        "/users",
+        params,
+        cache_key=f"search:{q.lower()}:{exact}:{page}:{page_size}",
+        ttl_seconds=120.0,
+    )
     items = [build_user_summary(item) for item in payload] if isinstance(payload, list) else []
     return IntraUsersPage.model_validate(
         {"items": items, "meta": page_meta_from_headers(headers, page=page, page_size=page_size)}

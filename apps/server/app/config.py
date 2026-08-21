@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Public API (per-user API keys)
     api_key_rate_limit_per_minute: int = 60
 
+    # Local media (avatar / banner uploads)
+    media_root: str = "media"
+    media_url_prefix: str = "/media"
+
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
