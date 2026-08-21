@@ -1,7 +1,10 @@
 # Cahier des charges — BetterIntra
 
-**Cadre :** ft_transcendence Surprise · **Cible :** 18 pts · **v1.9** · 3 août 2026
+**Cadre :** ft_transcendence Surprise · **Cible :** 15 pts · **v1.12** · 21 août 2026
 
+> **v1.12** — Recherche events avancée retirée du scope (Web Minor hors cible).  
+> **v1.11** — Peer recommendations retirées du scope (module of choice hors cible).  
+> **v1.10** — i18n retiré du scope (hors bonus / hors cible).  
 > **v1.9** — Major *Web public API* rétabli : **profils BetterIntra (bio…)** à la place des slots. Slots restent hors scope.
 
 ---
@@ -19,7 +22,7 @@ Intra 42 moderne : compte BetterIntra (email/password), **lien OAuth 42** pour l
 | Mode | Accès |
 |---|---|
 | Email + password | Compte local (exigence sujet). Features BetterIntra (amis, chat, profil étendu, notifs…). |
-| + OAuth 42 lié | Tokens en BDD → profil 42, projets, events, évals, logtime, reco… |
+| + OAuth 42 lié | Tokens en BDD → profil 42, projets, events, évals, logtime… |
 
 Email/password **ne remplace pas** OAuth (module +1). OAuth **ne remplace pas** email/password (base obligatoire).
 
@@ -34,7 +37,7 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 - **Profil 42** — login, avatar, displayname, campus, wallet et points de correction (lecture)
 - **Cursus** — niveau, grade, progression
 - **Projets** — liste des projets, statut, notes
-- **Events** — agenda campus + recherche avancée (filtres, tri, pagination)
+- **Events** — agenda campus (lecture) via feed unifié ; pas de module « recherche avancée »
 - **Évaluations** — historique (correcteur / corrigé)
 - **Logtime** — présence / locations + stats d’heures à l’école
 - **Recherche users** — trouver et ouvrir le profil d’un autre élève
@@ -50,17 +53,18 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 - **Notifications** — inbox simple (`type`, `body`, `url`, `created_at`) ; purge auto 7j ; push WS ; pas de mute/read
 - **WebSockets** — online, nouveaux messages, read receipts (pas de typing)
 - **Analytics logtime** — `GET /analytics/logtime` (totaux, jours actifs, par jour/semaine/weekday) + **export PDF/CSV**
-- **i18n** — au moins 3 langues complètes, language switcher, textes user-facing traduisibles
-- **Recommandations** — suggestions de personnes à contacter (même projet / avancée proche + overlap d’horaires à l’école) ; scoring déterministe ; module of choice (voir §5.1)
 
 ### 3.3 Hors scope
 
+- **Recherche events avancée** (filtres/tri/pagination type Web Minor) — hors cible ; agenda simple + CRUD BI suffit
+- **Peer recommendations** (module of choice) — hors cible
+- **i18n** (3 langues / language switcher) — hors cible ; UI en français (ou EN README seulement)
 - **Slots d’évaluation** (simulés ou réels) — coupe v1.8, non repris
 - Toute **écriture** sur l’API 42 (subscribe projet, vrais slots, wallet…)
 - Moulinette, shop, map clusters live
 - Affichage achievements 42 / skills
 - Gamification BetterIntra (badges, XP, leaderboard)
-- Favoris d’events, préférences UI avancées (hors switcher i18n)
+- Favoris d’events, préférences UI avancées
 - IA / ML (dont le Major « recommendation system » du sujet), jeux, ELK / Prometheus, RTL / multi-browser
 
 ---
@@ -73,19 +77,17 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 | Dashboard | Synthèse (niveau, points, prochaines évals/events, notifs) |
 | Profil | Soi / autres · data 42 si lié · bio BetterIntra · amis |
 | Projets | Liste, statut, notes |
-| Agenda | `GET /events` unifié (Intra + BI) · recherche/filtres · CRUD BI |
+| Agenda | `GET /events` unifié (Intra + BI) · CRUD BI |
 | Évaluations | Historique (correcteur / corrigé) |
 | Logtime | Calendrier + analytics + export |
 | Amis | Liste, ajout/retrait, online |
 | Chat | Conversations DM |
 | Notifications | Centre de notifications |
-| Recommandations | Suggestions + raisons + CTA |
 | Legal | Privacy Policy + Terms of Service |
-| *(global)* | Language switcher i18n |
 
 ---
 
-## 5. Modules → 18 pts
+## 5. Modules → 15 pts
 
 | # | Module | Cat. | Pts |
 |---|---|---|---|
@@ -97,23 +99,12 @@ Sans compte 42 lié, ces écrans affichent un CTA « Lie ton Intra » (pas d’a
 | 6 | API publique events + clés API | Web public API Major | 2 |
 | 7 | ORM | Web Minor | 1 |
 | 8 | Notifications | Web Minor | 1 |
-| 9 | Recherche events avancée | Web Minor | 1 |
-| 10 | Analytics logtime + export | Data Major | 2 |
-| 11 | i18n (3 langues) | Accessibility Minor | 1 |
-| 12 | Peer recommendations | **Modules of choice** Minor | 1 |
-| | | **Total** | **18** |
+| 9 | Analytics logtime + export | Data Major | 2 |
+| | | **Total** | **15** |
 
-Email/password = exigence base (**0 pt**). Export PDF = inclus dans #10 (pas un Minor à part). Reco ≠ module AI/ML.
+Email/password = exigence base (**0 pt**). Export PDF = inclus dans #9. i18n + peer reco + recherche events avancée **hors scope**.
 
-Seuil sujet = **14** ; modules incomplets = 0 à l’éval.
-
-### 5.1 Reco (module of choice)
-
-Matching déterministe : même projet / avancée proche + overlap logtime (+ bonus « à l’école maintenant »). Pool v1 = users BetterIntra avec Intra lié. Endpoint `GET /recommendations` + UI avec **raisons** + CTA profil/ami/DM.
-
-**README (EN) obligatoire** — section *Custom module (Minor) — Peer recommendations* : why / challenges (cache API 42, rate limit, scoring explicable) / value / why 1 pt. Draft détaillé : conserver depuis l’historique git v1.4 §5.1 si besoin.
-
-Owners : Kylian (scoring) · Swan (UI) · Malik (proxy/cache 42).
+Seuil sujet = **14** ; modules incomplets = 0 à l’éval. Cible équipe = **15** (filet léger au-dessus de 14).
 
 ---
 
@@ -154,7 +145,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 ## 9. Modèle BDD (min)
 
-`User` · `IntraPerson` · `Friendship` · `Event` · `ApiKey` · `Conversation`/`Message`/`ConversationRead` · `UserBlock` · `Notification` · cache reco si besoin
+`User` · `IntraPerson` · `Friendship` · `Event` · `ApiKey` · `Conversation`/`Message`/`ConversationRead` · `UserBlock` · `Notification`
 
 ---
 
@@ -162,7 +153,7 @@ React + Vite SPA · TanStack Router/Query · Tailwind/shadcn · FastAPI · SQLAl
 
 Docker 1 commande · HTTPS · Chrome sans warnings · `.env` + example · Privacy + Terms · README EN (rôles PO/PM/TL + modules) · commits multi-auteurs · validation inputs FE+BE
 
-**MVP ok si :** auth dual · data 42 si lié · profil bio · events BI + API publique events (clés) · social+WS · analytics+export · i18n 3 langues · reco démo · compose up · README custom module.
+**MVP ok si :** auth dual · data 42 si lié · profil bio · events BI + API publique events (clés) · social+WS · analytics+export · Privacy/ToS · compose up · README EN.
 
 ---
 
@@ -171,9 +162,9 @@ Docker 1 commande · HTTPS · Chrome sans warnings · `.env` + example · Privac
 | Rôle | Focus |
 |---|---|
 | Malik | Backend / OAuth / proxy 42 / profils / events + API publique / social API / WS |
-| Swan | Frontend / pages / i18n / UI reco |
+| Swan | Frontend / pages / legal |
 | Ayoub | DevOps / Compose / HTTPS / envs / seed démo |
-| Kylian | Scoring recommandations |
+| Kylian | *(reco coupée)* — à réassigner (social front, notifs, tests, README…) |
 
 Rôles sujets (PO / PM / TL) à documenter dans le README.
 
