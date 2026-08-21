@@ -8,6 +8,7 @@ import { DashboardPage } from "@/pages/DashboardPage"
 import { EvaluationsPage } from "@/pages/EvaluationsPage"
 import { FriendsPage } from "@/pages/FriendsPage"
 import { LoginPage } from "@/pages/LoginPage"
+import { LogtimePage } from "@/pages/LogtimePage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { PrivacyPage } from "@/pages/PrivacyPage"
 import { ProfilePage } from "@/pages/ProfilePage"
@@ -62,6 +63,7 @@ function App() {
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />
+          <Route path="/logtime" element={<LogtimePage />} />
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/conversations" element={<ChatPage />} />
           <Route path="/conversations/:conversationId" element={<ChatPage />} />

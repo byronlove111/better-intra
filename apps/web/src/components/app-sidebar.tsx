@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Scale,
   ShieldCheck,
+  Timer,
   Users,
 } from "lucide-react"
 import { Link, NavLink, useLocation } from "react-router-dom"
@@ -81,6 +82,12 @@ function buildNavItems(isPreview: boolean): NavItem[] {
       to: isPreview ? "/evaluations?preview=evaluations" : "/evaluations",
       icon: ClipboardCheck,
       match: (pathname) => pathname === "/evaluations",
+    },
+    {
+      title: "Logtime",
+      to: "/logtime",
+      icon: Timer,
+      match: (pathname) => pathname === "/logtime",
     },
     {
       title: "Amis",
@@ -227,7 +234,7 @@ export function AppSidebar({
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">BetterIntra</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  Intra moderne
+                  42 Paris
                 </span>
               </div>
             </SidebarMenuButton>
