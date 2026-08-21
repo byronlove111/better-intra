@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/message-scroller"
 import type { ChatMessage, ChatPeer } from "@/features/chat/chat-api"
 import { getInitials } from "@/features/profile/profile-display"
+import { resolveMediaUrl } from "@/lib/api"
 
 function formatMessageTime(value: string) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -99,7 +100,7 @@ export function ChatMessageList({
                       {isLast ? (
                         <Avatar>
                           <AvatarImage
-                            src={sender.avatar_url ?? undefined}
+                            src={resolveMediaUrl(sender.avatar_url)}
                             alt={`Photo de ${sender.login}`}
                           />
                           <AvatarFallback>

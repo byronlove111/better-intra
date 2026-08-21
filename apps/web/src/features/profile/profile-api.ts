@@ -1,4 +1,4 @@
-import { apiDownload, apiRequest } from "@/lib/api"
+import { apiDownload, apiRequest, apiUpload } from "@/lib/api"
 
 type ProfileCursus = {
   name: string | null
@@ -26,12 +26,15 @@ export type UserProfile = {
   login: string | null
   display_name: string | null
   avatar_url: string | null
+  banner_url?: string | null
+  has_custom_avatar?: boolean
   email: string | null
   bio: string | null
   is_betterintra_linked: boolean
   is_intra_linked: boolean
   is_online?: boolean | null
   intra: ProfileIntra | null
+  updated_at?: string | null
 }
 
 export type FriendStats = {
@@ -84,6 +87,30 @@ export function updateMyBio(bio: string) {
   return apiRequest<UserProfile>("/users/me", {
     method: "PATCH",
     body: JSON.stringify({ bio }),
+  })
+}
+
+export function uploadMyAvatar(file: File) {
+  const formData = new FormData()
+  formData.append("file", file)
+  return apiUpload<UserProfile>("/users/me/avatar", formData)
+}
+
+export function deleteMyAvatar() {
+  return apiRequest<UserProfile>("/users/me/avatar", {
+    method: "DELETE",
+  })
+}
+
+export function uploadMyBanner(file: File) {
+  const formData = new FormData()
+  formData.append("file", file)
+  return apiUpload<UserProfile>("/users/me/banner", formData)
+}
+
+export function deleteMyBanner() {
+  return apiRequest<UserProfile>("/users/me/banner", {
+    method: "DELETE",
   })
 }
 

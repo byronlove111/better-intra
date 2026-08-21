@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.auth_service import extract_avatar_url
@@ -12,19 +12,47 @@ from app.intra.intra_service import (
     fetch_intra_user,
     get_valid_forty_two_access_token,
 )
+from app.media import media_service
 from app.realtime.ws_manager import ws_manager
 from app.users import user_repository
 from app.users.user_model import User
-from app.users.user_schemas import UserProfileOut
+from app.users.user_schemas import UserOut, UserProfileOut
 
 
-def build_my_unified_profile(db: Session, *, user: User) -> UserProfileOut:
+def effective_avatar_url(user: User) -> str | None:
+    return user.custom_avatar_url or user.avatar_url
+
+
+def serialize_user(user: User) -> UserOut:
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        forty_two_id=user.forty_two_id,
+        login=user.login,
+        display_name=user.display_name,
+        avatar_url=effective_avatar_url(user),
+        banner_url=user.banner_url,
+        has_custom_avatar=bool(user.custom_avatar_url),
+        bio=user.bio,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
+
+
+def build_my_unified_profile(
+    db: Session,
+    *,
+    user: User,
+    refresh_intra: bool = True,
+) -> UserProfileOut:
     payload: dict[str, Any] = {
         "id": user.id,
         "email": user.email,
         "login": user.login,
         "display_name": user.display_name,
-        "avatar_url": user.avatar_url,
+        "avatar_url": effective_avatar_url(user),
+        "banner_url": user.banner_url,
+        "has_custom_avatar": bool(user.custom_avatar_url),
         "forty_two_id": user.forty_two_id,
         "bio": user.bio if user.is_intra_linked() else None,
         "is_betterintra_linked": True,
@@ -34,11 +62,11 @@ def build_my_unified_profile(db: Session, *, user: User) -> UserProfileOut:
         "created_at": user.created_at,
         "updated_at": user.updated_at,
     }
-    if user.is_intra_linked():
+    if user.is_intra_linked() and refresh_intra:
         access_token = get_valid_forty_two_access_token(db, user)
-        me = fetch_intra_me(access_token)
+        me = fetch_intra_me(access_token, cache_key=str(user.id))
         payload["intra"] = IntraProfileOut.model_validate(build_intra_profile(me))
-        # keep cache fresh on intra_people
+        # keep cache fresh on intra_people (Intra avatar only — never overwrite custom)
         intra_person_repository.attach_betterintra_user(
             db,
             forty_two_id=int(me["id"]),
@@ -75,10 +103,18 @@ def build_profile_by_login(db: Session, *, viewer: User, login: str) -> UserProf
         betterintra_user_id=bi_user.id if bi_user else None,
     )
 
+    avatar = (
+        effective_avatar_url(bi_user)
+        if bi_user
+        else person.avatar_url
+    )
+
     payload: dict[str, Any] = {
         "login": resolved_login,
         "display_name": person.display_name,
-        "avatar_url": person.avatar_url,
+        "avatar_url": avatar,
+        "banner_url": bi_user.banner_url if bi_user else None,
+        "has_custom_avatar": bool(bi_user.custom_avatar_url) if bi_user else False,
         "forty_two_id": forty_two_id,
         "intra": IntraProfileOut.model_validate(intra),
         "is_betterintra_linked": bi_user is not None,
@@ -99,3 +135,42 @@ def require_bio_allowed(user: User) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Link your Intra account before setting a bio",
         )
+
+
+def require_media_allowed(user: User) -> None:
+    if not user.is_intra_linked():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Link your Intra account before uploading media",
+        )
+
+
+async def upload_my_avatar(db: Session, user: User, file: UploadFile) -> UserProfileOut:
+    require_media_allowed(user)
+    media_service.delete_media_file(user.custom_avatar_url)
+    url = await media_service.save_avatar(user.id, file)
+    user = user_repository.update_custom_avatar(db, user, custom_avatar_url=url)
+    # Local-only: media upload must never hit the 42 API.
+    return build_my_unified_profile(db, user=user, refresh_intra=False)
+
+
+async def clear_my_avatar(db: Session, user: User) -> UserProfileOut:
+    require_media_allowed(user)
+    media_service.delete_media_file(user.custom_avatar_url)
+    user = user_repository.update_custom_avatar(db, user, custom_avatar_url=None)
+    return build_my_unified_profile(db, user=user, refresh_intra=False)
+
+
+async def upload_my_banner(db: Session, user: User, file: UploadFile) -> UserProfileOut:
+    require_media_allowed(user)
+    media_service.delete_media_file(user.banner_url)
+    url = await media_service.save_banner(user.id, file)
+    user = user_repository.update_banner(db, user, banner_url=url)
+    return build_my_unified_profile(db, user=user, refresh_intra=False)
+
+
+async def clear_my_banner(db: Session, user: User) -> UserProfileOut:
+    require_media_allowed(user)
+    media_service.delete_media_file(user.banner_url)
+    user = user_repository.update_banner(db, user, banner_url=None)
+    return build_my_unified_profile(db, user=user, refresh_intra=False)

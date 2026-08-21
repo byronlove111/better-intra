@@ -20,7 +20,7 @@ from app.analytics.analytics_schemas import (
 )
 from app.intra.intra_service import (
     build_location_session,
-    forty_two_get,
+    forty_two_get_cached,
     get_valid_forty_two_access_token,
 )
 from app.users.user_model import User
@@ -58,7 +58,12 @@ def fetch_all_locations(
             "page[size]": 100,
             "sort": "-begin_at",
         }
-        payload, _ = forty_two_get(access_token, f"/users/{forty_two_id}/locations", params)
+        payload, _ = forty_two_get_cached(
+            access_token,
+            f"/users/{forty_two_id}/locations",
+            params,
+            cache_key=f"locations:{forty_two_id}:{page}:100:-begin_at",
+        )
         if not isinstance(payload, list) or not payload:
             break
         raw.extend(payload)
@@ -171,13 +176,24 @@ def get_my_logtime_analytics(
         )
 
     access_token = get_valid_forty_two_access_token(db, user)
+    cache_key = (
+        f"logtime:{user.id}:{begin_at.astimezone(UTC).isoformat()}:{end_at.astimezone(UTC).isoformat()}"
+    )
+    from app.intra.intra_cache import cache_get, cache_set
+
+    cached = cache_get(cache_key)
+    if isinstance(cached, LogtimeAnalyticsOut):
+        return cached
+
     locations = fetch_all_locations(
         access_token,
         user.forty_two_id,
         begin_at=begin_at,
         end_at=end_at,
     )
-    return build_analytics(login=user.login, begin_at=begin_at, end_at=end_at, locations=locations)
+    result = build_analytics(login=user.login, begin_at=begin_at, end_at=end_at, locations=locations)
+    cache_set(cache_key, result, ttl_seconds=600.0)
+    return result
 
 
 def analytics_to_csv(data: LogtimeAnalyticsOut) -> str:

@@ -4,6 +4,8 @@ const myPreviewProfile: UserProfile = {
   login: "swann",
   display_name: "Swann Latreche",
   avatar_url: "https://api.dicebear.com/9.x/initials/svg?seed=Swann%20Latreche",
+  banner_url: null,
+  has_custom_avatar: false,
   email: "swann@example.com",
   bio: "Étudiant à 42 Paris, actuellement sur ft_transcendence.",
   is_betterintra_linked: true,

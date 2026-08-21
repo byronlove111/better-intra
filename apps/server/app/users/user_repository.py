@@ -91,6 +91,22 @@ def update_bio(db: Session, user: User, *, bio: str) -> User:
     return user
 
 
+def update_custom_avatar(db: Session, user: User, *, custom_avatar_url: str | None) -> User:
+    user.custom_avatar_url = custom_avatar_url
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_banner(db: Session, user: User, *, banner_url: str | None) -> User:
+    user.banner_url = banner_url
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def list_all_ids(db: Session, *, exclude_user_id: int | None = None) -> list[int]:
     stmt = select(User.id)
     if exclude_user_id is not None:

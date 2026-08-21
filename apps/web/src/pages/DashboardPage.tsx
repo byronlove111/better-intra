@@ -63,7 +63,7 @@ import {
   getMonthRange,
   getPreviewLogtime,
 } from "@/features/profile/profile-display"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 
 export function DashboardPage() {
   const [searchParams] = useSearchParams()
@@ -319,7 +319,7 @@ export function DashboardPage() {
                 <div className="flex items-center gap-5">
                   <Avatar className="size-24 shrink-0">
                     <AvatarImage
-                      src={profile?.avatar_url ?? undefined}
+                      src={resolveMediaUrl(profile?.avatar_url)}
                       alt={`Photo de ${profile?.display_name ?? profile?.login}`}
                     />
                     <AvatarFallback>{avatarFallback}</AvatarFallback>
@@ -467,7 +467,7 @@ export function DashboardPage() {
                           <div className="relative shrink-0">
                             <Avatar className="size-10">
                               <AvatarImage
-                                src={friend.avatar_url ?? undefined}
+                                src={resolveMediaUrl(friend.avatar_url)}
                                 alt={`Photo de ${friend.login ?? "ami"}`}
                               />
                               <AvatarFallback>

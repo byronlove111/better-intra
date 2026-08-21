@@ -17,7 +17,7 @@ import {
 } from "@/features/friends/friends-api"
 import { getInitials } from "@/features/profile/profile-display"
 import { presenceOnlineQueryKey } from "@/features/realtime/presence-cache"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 
 function FriendRow({
   friend,
@@ -38,7 +38,7 @@ function FriendRow({
       >
         <Avatar>
           <AvatarImage
-            src={friend.avatar_url ?? undefined}
+            src={resolveMediaUrl(friend.avatar_url)}
             alt={`Photo de ${friend.login}`}
           />
           <AvatarFallback>

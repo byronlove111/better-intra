@@ -12,6 +12,8 @@ export type AuthUser = {
   login: string | null
   display_name: string | null
   avatar_url: string | null
+  banner_url?: string | null
+  has_custom_avatar?: boolean
   bio: string | null
   created_at: string
   updated_at: string

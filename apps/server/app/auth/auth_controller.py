@@ -33,6 +33,7 @@ from app.deps import get_current_user, get_db
 from app.users import user_repository
 from app.users.user_model import User
 from app.users.user_schemas import UserOut
+from app.users.user_service import serialize_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -63,7 +64,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenRespo
     return TokenResponse(
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
-        user=UserOut.model_validate(user),
+        user=serialize_user(user),
     )
 
 
@@ -84,7 +85,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
-        user=UserOut.model_validate(user),
+        user=serialize_user(user),
     )
 
 
@@ -122,7 +123,7 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenRespons
     return TokenResponse(
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
-        user=UserOut.model_validate(user),
+        user=serialize_user(user),
     )
 
 
@@ -138,7 +139,7 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenRespons
     description="Return the authenticated user. Requires `Authorization: Bearer <access_token>`.",
 )
 def me(current_user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut.model_validate(current_user)
+    return serialize_user(current_user)
 
 
 # ---------------------------------------------------------------------------

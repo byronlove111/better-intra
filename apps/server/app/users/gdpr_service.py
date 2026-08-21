@@ -15,6 +15,7 @@ from app.chat.message_model import Message
 from app.events.event_model import Event
 from app.friends.friend_model import Friendship
 from app.intra.intra_person_model import IntraPerson
+from app.media.media_service import delete_user_media
 from app.notifications.notification_model import Notification
 from app.users.user_model import User
 
@@ -117,6 +118,8 @@ def erase_user_data(db: Session, user: User) -> ErasureSummary:
         .where(IntraPerson.betterintra_user_id == user_id)
         .values(betterintra_user_id=None)
     )
+
+    delete_user_media(user_id)
 
     deleted_user = db.execute(delete(User).where(User.id == user_id)).rowcount or 0
     db.commit()

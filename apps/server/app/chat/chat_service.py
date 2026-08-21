@@ -19,6 +19,7 @@ from app.friends import friend_repository
 from app.realtime.ws_manager import ws_manager
 from app.users import user_repository
 from app.users.user_model import User
+from app.users.user_service import effective_avatar_url
 
 
 def _resolve_peer_by_login(db: Session, login: str) -> User | None:
@@ -33,7 +34,7 @@ def _peer_out(user: User) -> PeerOut:
         id=user.id,
         login=user.login or "",
         display_name=user.display_name,
-        avatar_url=user.avatar_url,
+        avatar_url=effective_avatar_url(user),
         is_online=ws_manager.is_online(user.id),
     )
 

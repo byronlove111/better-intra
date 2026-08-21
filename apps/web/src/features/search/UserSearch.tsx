@@ -15,6 +15,7 @@ import {
   type IntraUser,
   searchIntraUsers,
 } from "@/features/search/user-search-api"
+import { resolveMediaUrl } from "@/lib/api"
 
 const previewUsers: IntraUser[] = [
   {
@@ -105,7 +106,7 @@ export function UserSearch({ isPreview, canSearch }: UserSearchProps) {
             <ComboboxItem key={user.id} value={user}>
               <Avatar className="size-8">
                 <AvatarImage
-                  src={user.avatar_url ?? undefined}
+                  src={resolveMediaUrl(user.avatar_url)}
                   alt={`Photo de ${user.login}`}
                 />
                 <AvatarFallback>{user.login.slice(0, 2).toUpperCase()}</AvatarFallback>
