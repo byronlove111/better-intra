@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { FolderKanban, MessageCircle, UserRoundMinus, UserRoundPlus } from "lucide-react"
+import {
+  FolderKanban,
+  MessageCircle,
+  Pencil,
+  UserRoundMinus,
+  UserRoundPlus,
+} from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 
@@ -13,7 +19,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+} from "@/components/ui/field"
 import { Progress } from "@/components/ui/progress"
+import { Textarea } from "@/components/ui/textarea"
 import { getCurrentUser } from "@/features/auth/auth-api"
 import { followUser, unfollowUser } from "@/features/friends/friends-api"
 import { IntraStatsCards } from "@/features/profile/IntraStatsCards"
@@ -26,6 +39,7 @@ import {
   getProfileProjects,
   getUserFriendStats,
   getUserProfile,
+  updateMyBio,
 } from "@/features/profile/profile-api"
 import {
   formatDateOnly,
@@ -76,6 +90,8 @@ export function ProfilePage() {
   )
   const [projectsReadyFor, setProjectsReadyFor] = useState<string | null>(null)
   const [logtimeProfile, setLogtimeProfile] = useState<string | null>(null)
+  const [isEditingBio, setIsEditingBio] = useState(false)
+  const [bioDraft, setBioDraft] = useState("")
   const monthRange = getMonthRange(selectedMonth)
 
   const currentUserRequest = useQuery({
@@ -111,6 +127,15 @@ export function ProfilePage() {
     Boolean(login)
     && currentUserRequest.data?.login != null
     && currentUserRequest.data.login === login
+  const canEditBio =
+    (isOwnProfile || viewingOwnLogin)
+    && (
+      isPreview
+      || (
+        currentUserRequest.data?.is_intra_linked === true
+        && profileRequest.data?.is_betterintra_linked !== false
+      )
+    )
   const canFollow =
     !isPreview
     && !isOwnProfile
@@ -132,6 +157,18 @@ export function ProfilePage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["friends"] }),
         queryClient.invalidateQueries({ queryKey: presenceOnlineQueryKey }),
+      ])
+    },
+  })
+
+  const updateBioRequest = useMutation({
+    mutationFn: updateMyBio,
+    onSuccess: async () => {
+      setIsEditingBio(false)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["profile", "me"] }),
+        queryClient.invalidateQueries({ queryKey: ["profile", profileKey] }),
+        queryClient.invalidateQueries({ queryKey: ["auth", "me"] }),
       ])
     },
   })
@@ -199,6 +236,27 @@ export function ProfilePage() {
     bioText = "Cette personne n’a pas encore de compte BetterIntra."
   } else if (profile.bio?.trim()) {
     bioText = profile.bio
+  } else if (canEditBio) {
+    bioText = "Tu n’as pas encore ajouté de bio."
+  }
+
+  function startBioEdition() {
+    updateBioRequest.reset()
+    setBioDraft(profile.bio ?? "")
+    setIsEditingBio(true)
+  }
+
+  function cancelBioEdition() {
+    updateBioRequest.reset()
+    setIsEditingBio(false)
+  }
+
+  function saveBio() {
+    if (isPreview) {
+      setIsEditingBio(false)
+      return
+    }
+    updateBioRequest.mutate(bioDraft.trim())
   }
 
   function changeMonth(offset: number) {
@@ -300,9 +358,60 @@ export function ProfilePage() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                {bioText}
-              </p>
+              {canEditBio && isEditingBio ? (
+                <FieldGroup className="max-w-2xl">
+                  <Field>
+                    <Textarea
+                      value={bioDraft}
+                      onChange={(event) => setBioDraft(event.target.value)}
+                      maxLength={500}
+                      aria-label="Modifier ma bio"
+                      disabled={updateBioRequest.isPending}
+                    />
+                    <FieldDescription>
+                      {bioDraft.length}/500 caractères
+                    </FieldDescription>
+                    <FieldError>
+                      {getApiErrorMessage(updateBioRequest.error)}
+                    </FieldError>
+                  </Field>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={saveBio}
+                      disabled={updateBioRequest.isPending}
+                    >
+                      {updateBioRequest.isPending
+                        ? "Enregistrement…"
+                        : "Enregistrer"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={cancelBioEdition}
+                      disabled={updateBioRequest.isPending}
+                    >
+                      Annuler
+                    </Button>
+                  </div>
+                </FieldGroup>
+              ) : (
+                <div className="flex max-w-2xl items-start gap-2">
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    {bioText}
+                  </p>
+                  {canEditBio ? (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={startBioEdition}
+                    >
+                      <Pencil />
+                      <span className="sr-only">Modifier ma bio</span>
+                    </Button>
+                  ) : null}
+                </div>
+              )}
               {hasIntraProfile && (
                 <div className="max-w-sm">
                   <div className="mb-2 flex items-center justify-between text-sm">

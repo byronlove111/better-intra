@@ -434,7 +434,7 @@ export function AgendaPage() {
               <DrawerFooter>
                 <Button onClick={() => openCreate(selectedDay)}>
                   <Plus data-icon="inline-start" />
-                  Event ce jour
+                  Ajouter un event
                 </Button>
                 <DrawerClose render={<Button variant="outline" />}>
                   Fermer
