@@ -20,6 +20,13 @@ import {
   FieldGroup,
 } from "@/components/ui/field"
 import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { getCurrentUser } from "@/features/auth/auth-api"
@@ -42,6 +49,7 @@ import {
 } from "@/features/profile/profile-api"
 import {
   formatDateOnly,
+  formatRelativeAgo,
   getCurrentCursus,
   getDaysRemaining,
   getInitials,
@@ -78,6 +86,15 @@ function getProjectStatus(project: ProfileProject): ProjectStatus {
   return { label: "À venir", variant: "outline" }
 }
 
+function isFortyTwoCursus(cursus: {
+  name?: string | null
+  slug?: string | null
+}) {
+  const name = (cursus.name ?? "").toLowerCase().replace(/[\s_-]+/g, "")
+  const slug = (cursus.slug ?? "").toLowerCase()
+  return name === "42cursus" || slug.includes("42-cursus") || slug === "42cursus"
+}
+
 function SidebarStat({
   label,
   value,
@@ -110,6 +127,7 @@ export function ProfilePage() {
   const profileKey = login ?? "me"
   const [isEditingBio, setIsEditingBio] = useState(false)
   const [bioDraft, setBioDraft] = useState("")
+  const [selectedCursusId, setSelectedCursusId] = useState<number | null>(null)
   const logtimeRange = useMemo(() => getLastMonthsRange(3), [])
 
   const currentUserRequest = useQuery({
@@ -234,7 +252,28 @@ export function ProfilePage() {
   const logtime = isPreview
     ? getPreviewYearLogtime(logtimeRange.begin, logtimeRange.end)
     : logtimeRequest.data
-  const projects = isPreview ? previewProjects : (projectsRequest.data ?? [])
+  const projects = isPreview
+    ? [...previewProjects].sort((first, second) =>
+      (first.project_name ?? "").localeCompare(second.project_name ?? "", "fr", {
+        sensitivity: "base",
+      }),
+    )
+    : (projectsRequest.data ?? [])
+  const availableCursus = (profile.intra?.cursus ?? []).filter(
+    (item) => item.id != null,
+  )
+  const defaultCursusId = availableCursus.find(isFortyTwoCursus)?.id
+    ?? availableCursus[0]?.id
+    ?? null
+  const activeCursusId = selectedCursusId != null
+    && availableCursus.some((item) => item.id === selectedCursusId)
+    ? selectedCursusId
+    : defaultCursusId
+  const filteredProjects = activeCursusId == null
+    ? projects
+    : projects.filter((project) =>
+      (project.cursus_ids ?? []).includes(activeCursusId),
+    )
   const levelProgress = getLevelProgress(cursus?.level)
   const avatarFallback = getInitials(profile.display_name ?? profile.login)
   const statsUnavailable =
@@ -509,23 +548,45 @@ export function ProfilePage() {
             <Separator />
 
             <section className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-base font-semibold tracking-tight">
-                    Projets récents
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Derniers projets du cursus 42
-                  </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-base font-semibold tracking-tight">
+                  Projets
+                </h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  {availableCursus.length > 0 && activeCursusId != null ? (
+                    <Select
+                      value={String(activeCursusId)}
+                      onValueChange={(value) => {
+                        if (value != null) setSelectedCursusId(Number(value))
+                      }}
+                    >
+                      <SelectTrigger size="sm" className="min-w-40">
+                        <SelectValue>
+                          {availableCursus.find((item) => item.id === activeCursusId)?.name
+                            ?? `Cursus ${activeCursusId}`}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        {availableCursus.map((item) => (
+                          <SelectItem
+                            key={item.id!}
+                            value={String(item.id)}
+                          >
+                            {item.name ?? `Cursus ${item.id}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                  {(isOwnProfile || viewingOwnLogin) && (
+                    <Link
+                      to="/projects"
+                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Vue paginée
+                    </Link>
+                  )}
                 </div>
-                {(isOwnProfile || viewingOwnLogin) && (
-                  <Link
-                    to="/projects"
-                    className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    Tout voir
-                  </Link>
-                )}
               </div>
 
               {!isPreview && projectsRequest.isPending ? (
@@ -536,22 +597,22 @@ export function ProfilePage() {
                 <p className="text-sm text-muted-foreground">
                   Les projets sont temporairement indisponibles.
                 </p>
-              ) : projects.length === 0 ? (
+              ) : filteredProjects.length === 0 ? (
                 <EmptyState
                   icon={FolderKanban}
                   title="Aucun projet"
-                  description="Aucun projet à afficher."
+                  description="Aucun projet pour ce cursus."
                 />
               ) : (
                 <ul className="flex flex-col">
-                  {projects.map((project, index) => {
+                  {filteredProjects.map((project, index) => {
                     const projectStatus = getProjectStatus(project)
 
                     return (
                       <li
                         key={project.id}
                         className={cn(
-                          "flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between",
+                          "flex flex-col gap-0.5 py-2.5 sm:flex-row sm:items-center sm:justify-between",
                           index > 0 && "border-t",
                         )}
                       >
@@ -561,19 +622,28 @@ export function ProfilePage() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {project.marked_at
-                              ? `Évalué le ${formatDateOnly(project.marked_at)}`
+                              ? (formatRelativeAgo(project.marked_at) ??
+                                "Pas encore évalué")
                               : "Pas encore évalué"}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          {project.final_mark !== null && (
-                            <span className="text-sm font-semibold tabular-nums">
-                              {project.final_mark} %
+                          {project.final_mark !== null ? (
+                            <span
+                              className={cn(
+                                "text-sm font-semibold tabular-nums",
+                                project.validated === true
+                                  ? "text-emerald-500"
+                                  : "text-destructive",
+                              )}
+                            >
+                              {project.final_mark}
                             </span>
+                          ) : (
+                            <Badge variant={projectStatus.variant}>
+                              {projectStatus.label}
+                            </Badge>
                           )}
-                          <Badge variant={projectStatus.variant}>
-                            {projectStatus.label}
-                          </Badge>
                         </div>
                       </li>
                     )
@@ -583,7 +653,7 @@ export function ProfilePage() {
             </section>
           </div>
 
-          <aside className="flex flex-col gap-8 lg:sticky lg:top-6">
+          <aside className="flex flex-col gap-8 lg:sticky lg:top-4 lg:self-start">
             <div className="flex flex-col gap-3">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Niveau

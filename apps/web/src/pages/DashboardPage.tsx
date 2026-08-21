@@ -686,7 +686,7 @@ export function DashboardPage() {
                       <li
                         key={project.id}
                         className={cn(
-                          "flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between",
+                          "flex flex-col gap-0.5 py-2.5 sm:flex-row sm:items-center sm:justify-between",
                           index > 0 && "border-t",
                         )}
                       >

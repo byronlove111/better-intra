@@ -48,22 +48,13 @@ export function AppLayout() {
 
   return (
     <TooltipProvider>
-      <SidebarProvider
-        className={cn(
-          isChatRoute ? "h-svh overflow-hidden" : "min-h-svh",
-        )}
-      >
+      <SidebarProvider className="h-svh overflow-hidden">
         <AppSidebar
           isPreview={isPreview}
           currentUser={currentUser}
           onLogout={logout}
         />
-        <SidebarInset
-          className={cn(
-            "min-h-0 min-w-0",
-            isChatRoute && "h-svh overflow-hidden",
-          )}
-        >
+        <SidebarInset className="min-h-0 min-w-0 overflow-hidden">
           <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
             <SidebarTrigger className="-ml-1" />
             <div className="w-full max-w-sm flex-1">
