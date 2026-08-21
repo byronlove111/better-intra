@@ -30,6 +30,7 @@ export function AppLayout() {
       || preview === "profile"
       || preview === "projects"
       || preview === "evaluations"
+      || preview === "message"
     )
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
@@ -156,7 +157,7 @@ export function AppLayout() {
             Amis
           </NavLink>
           <NavLink
-            to="/conversations"
+            to={isPreview ? "/conversations?preview=message" : "/conversations"}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
