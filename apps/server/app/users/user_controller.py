@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.deps import get_current_user, get_db, require_intra_linked
 from app.users import user_repository
+from app.users.gdpr_service import erase_user_data
 from app.users.user_model import User
-from app.users.user_schemas import UpdateProfileRequest, UserProfileOut
+from app.users.user_schemas import GdprErasureOut, UpdateProfileRequest, UserProfileOut
 from app.users.user_service import build_my_unified_profile, build_profile_by_login, require_bio_allowed
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -46,6 +47,35 @@ def update_my_profile(
     require_bio_allowed(current_user)
     user = user_repository.update_bio(db, current_user, bio=body.bio.strip())
     return build_my_unified_profile(db, user=user)
+
+
+@router.delete(
+    "/me",
+    response_model=GdprErasureOut,
+    summary="Delete my account and all linked data (GDPR)",
+    description=(
+        "Irreversible erasure of the BetterIntra account: profile, OAuth tokens, "
+        "API keys, events, notifications, friendships, blocks, and chat history "
+        "involving this user. The Intra directory entry is kept but unlinked."
+    ),
+)
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GdprErasureOut:
+    summary = erase_user_data(db, current_user)
+    return GdprErasureOut(
+        deleted=True,
+        api_keys=summary.api_keys,
+        events=summary.events,
+        notifications=summary.notifications,
+        friendships=summary.friendships,
+        blocks=summary.blocks,
+        messages=summary.messages,
+        conversation_reads=summary.conversation_reads,
+        conversations=summary.conversations,
+        user=summary.user,
+    )
 
 
 # ---------------------------------------------------------------------------

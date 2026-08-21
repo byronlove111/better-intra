@@ -87,6 +87,26 @@ export function updateMyBio(bio: string) {
   })
 }
 
+export type GdprErasureResult = {
+  deleted: boolean
+  api_keys: number
+  events: number
+  notifications: number
+  friendships: number
+  blocks: number
+  messages: number
+  conversation_reads: number
+  conversations: number
+  user: number
+}
+
+/** Irreversible GDPR erasure of the current BetterIntra account. */
+export function deleteMyAccount() {
+  return apiRequest<GdprErasureResult>("/users/me", {
+    method: "DELETE",
+  })
+}
+
 export function getMyFriendStats() {
   return apiRequest<FriendStats>("/friends/stats")
 }

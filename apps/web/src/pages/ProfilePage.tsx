@@ -29,6 +29,7 @@ import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import { getCurrentUser } from "@/features/auth/auth-api"
 import { followUser, unfollowUser } from "@/features/friends/friends-api"
+import { DeleteMyDataButton } from "@/features/profile/DeleteMyDataButton"
 import { IntraStatsCards } from "@/features/profile/IntraStatsCards"
 import { LogtimeCard } from "@/features/profile/LogtimeCard"
 import {
@@ -440,6 +441,11 @@ export function ProfilePage() {
                   Fin du cursus prévue : {formatDateOnly(cursus.end_at)}
                 </p>
               )}
+              {!isPreview && (isOwnProfile || viewingOwnLogin) ? (
+                <div className="mt-2 border-t pt-4">
+                  <DeleteMyDataButton />
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>
