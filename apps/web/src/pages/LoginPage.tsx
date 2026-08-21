@@ -23,6 +23,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { LegalLinks } from "@/components/LegalLinks"
 
 const loginSchema = z.object({
   email: z.email("Adresse email invalide"),
@@ -57,7 +58,7 @@ export function LoginPage() {
   const apiError = getApiErrorMessage(loginRequest.error)
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Connexion</CardTitle>
@@ -119,6 +120,7 @@ export function LoginPage() {
           </Link>
         </CardFooter>
       </Card>
+      <LegalLinks className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-center text-xs text-muted-foreground" />
     </main>
   )
 }

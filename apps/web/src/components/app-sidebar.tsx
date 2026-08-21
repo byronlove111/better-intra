@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  Scale,
+  ShieldCheck,
   Users,
 } from "lucide-react"
 import { Link, NavLink, useLocation } from "react-router-dom"
@@ -152,6 +154,25 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarSeparator />
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link to="/privacy" />}
+              tooltip="Confidentialité"
+            >
+              <ShieldCheck />
+              <span>Confidentialité</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link to="/terms" />}
+              tooltip="Conditions d’utilisation"
+            >
+              <Scale />
+              <span>Conditions</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarSeparator />
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"

@@ -20,6 +20,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { LegalLinks } from "@/components/LegalLinks"
 import { register } from "@/features/auth/auth-api"
 import { saveTokens } from "@/features/auth/auth-storage"
 import { getApiErrorMessage } from "@/lib/api"
@@ -59,7 +60,7 @@ export function RegisterPage() {
   const apiError = getApiErrorMessage(registerRequest.error)
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Créer un compte</CardTitle>
@@ -123,6 +124,7 @@ export function RegisterPage() {
           </Link>
         </CardFooter>
       </Card>
+      <LegalLinks className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-center text-xs text-muted-foreground" />
     </main>
   )
 }
