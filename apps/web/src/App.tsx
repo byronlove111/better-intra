@@ -9,9 +9,11 @@ import { EvaluationsPage } from "@/pages/EvaluationsPage"
 import { FriendsPage } from "@/pages/FriendsPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
+import { PrivacyPage } from "@/pages/PrivacyPage"
 import { ProfilePage } from "@/pages/ProfilePage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { RegisterPage } from "@/pages/RegisterPage"
+import { TermsPage } from "@/pages/TermsPage"
 
 function RootRedirect() {
   const location = useLocation()
@@ -49,6 +51,8 @@ function App() {
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

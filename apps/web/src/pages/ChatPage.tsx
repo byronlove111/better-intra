@@ -487,10 +487,6 @@ export function ChatPage() {
   const isPreview =
     import.meta.env.DEV && searchParams.get("preview") === "message"
 
-  if (isPreview) {
-    return <ChatPreviewPage />
-  }
-
   const conversationId = conversationIdParam
     ? Number.parseInt(conversationIdParam, 10)
     : null
@@ -500,14 +496,19 @@ export function ChatPage() {
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
+    enabled: !isPreview,
   })
   const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
 
   const conversationsRequest = useQuery({
     queryKey: conversationsQueryKey,
     queryFn: listConversations,
-    enabled: isIntraLinked,
+    enabled: !isPreview && isIntraLinked,
   })
+
+  if (isPreview) {
+    return <ChatPreviewPage />
+  }
 
   if (currentUserRequest.isPending) {
     return <p className="text-sm text-muted-foreground">Chargement…</p>
