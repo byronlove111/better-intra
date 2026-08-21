@@ -99,9 +99,10 @@ export function PrivacyPage() {
         <h2 className={headingClassName}>7. Vos droits</h2>
         <p className="text-muted-foreground">
           L’utilisateur peut demander l’accès, la rectification ou la suppression
-          de ses données, ainsi que retirer son autorisation OAuth 42. Ces demandes
-          peuvent être adressées à l’équipe BetterIntra par le canal de contact
-          communiqué avec le projet. Une vérification d’identité peut être demandée
+          de ses données, ainsi que retirer son autorisation OAuth 42. La suppression
+          complète du compte BetterIntra (jetons, clés API et données liées) est
+          disponible depuis la page Profil via « Supprimer mes données ». Une
+          vérification d’identité peut être demandée pour les demandes hors application
           afin d’éviter la suppression des données d’une autre personne.
         </p>
       </section>

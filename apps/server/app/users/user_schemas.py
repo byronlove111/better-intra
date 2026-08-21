@@ -50,3 +50,18 @@ class UserProfileOut(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     bio: str = Field(max_length=500)
+
+
+class GdprErasureOut(BaseModel):
+    """Counts of rows removed when the account is erased (GDPR)."""
+
+    deleted: bool = True
+    api_keys: int
+    events: int
+    notifications: int
+    friendships: int
+    blocks: int
+    messages: int
+    conversation_reads: int
+    conversations: int
+    user: int
