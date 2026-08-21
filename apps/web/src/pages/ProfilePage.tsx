@@ -208,6 +208,7 @@ export function ProfilePage() {
     return <p className="text-sm text-destructive">{error ?? "Profil introuvable"}</p>
   }
 
+  const profileBio = profile.bio
   const cursus = getCurrentCursus(profile.intra?.cursus ?? [])
   const campus = profile.intra?.campus[0]
   const hasIntraProfile = profile.intra !== null
@@ -238,15 +239,15 @@ export function ProfilePage() {
 
   if (!profile.is_betterintra_linked) {
     bioText = "Cette personne n’a pas encore de compte BetterIntra."
-  } else if (profile.bio?.trim()) {
-    bioText = profile.bio
+  } else if (profileBio?.trim()) {
+    bioText = profileBio
   } else if (canEditBio) {
     bioText = "Tu n’as pas encore ajouté de bio."
   }
 
   function startBioEdition() {
     updateBioRequest.reset()
-    setBioDraft(profile.bio ?? "")
+    setBioDraft(profileBio ?? "")
     setIsEditingBio(true)
   }
 
