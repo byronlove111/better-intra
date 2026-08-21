@@ -20,29 +20,35 @@ cp .env.example .env      # une seule fois — jamais ce fichier dans git
 
 `.env` (racine, jamais committé) est lu automatiquement par `docker compose` / `podman compose`.
 
+Aucune de ces variables n'est passée en vrac au container (pas de `env_file:`).
+Chacune est listée explicitement dans `environment:`.
+Si une seule manque ou est vide, `docker compose up` refuse de démarrer -> `.env.example` seul (sans creds 42 remplis) ne peut **plus** lancer la stack tel quel — voir plus bas.
+
 | Variable | Sert à |
 |---|---|
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Le container `db` (image Postgres officielle) |
-| `DATABASE_URL` | Valeur par défaut pour le dev **hors Docker** (Homebrew). Dans `compose.yml`, elle est surchargée pour viser `db:5432` (nom du service, pas `localhost`) |
-| `CORS_ORIGINS` | Origines front autorisées côté API — pas strictement nécessaire pour `web` (même origine que l'API via le proxy, `https://localhost:8443` → pas de CORS), gardé pour les autres consommateurs (ex. `api-lab`) |
-| `VITE_API_URL` | Build arg de `apps/web/Dockerfile`, figée dans le bundle Vite au build — `https://localhost:8443/api` (jamais l'API en clair). Changer sa valeur exige un rebuild de `web`, pas juste un restart |
-| `FRONTEND_URL` | Où `/auth/callback` renvoie le navigateur après le lien 42 — une seule valeur, pas une liste. Point d'entrée unique de l'archi : `https://localhost:8443` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Le container `db` (image Postgres officielle) — et réinjectées dans `DATABASE_URL` côté `backend`/`migrate` |
+| `DOMAIN_NAME` | `host:port` utilisé pour composer `FRONTEND_URL` et `FORTY_TWO_REDIRECT_URI` (interpolation dans `compose.yml`, pas dans `.env` lui-même — les valeurs d'un `env_file` ne s'interpolent pas entre elles). Défaut dev : `localhost:8443` — changer ici pour héberger ailleurs (ex. un hostname du réseau 42) |
+| `DATABASE_URL` | Valeur par défaut pour le dev **hors Docker** (Homebrew). Dans `compose.yml`, elle est reconstruite à partir des `POSTGRES_*` pour viser `db:5432` (nom du service, pas `localhost`) |
+| `VITE_API_URL` | Build arg de `apps/web/Dockerfile`, figée dans le bundle Vite au build. Reste **relative** (`/api`) — jamais un domaine en dur : le proxy sert front + API sur la même origine, un chemin absolu (`https://<host>/api`) casse ce same-origin dès que `DOMAIN_NAME` change et déclenche du CORS. Changer sa valeur exige un rebuild de `web`, pas juste un restart |
+| `JWT_SECRET` / `JWT_ALGORITHM` / `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` / `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Signature des tokens d'auth côté `backend` |
 | `FORTY_TWO_CLIENT_ID` / `FORTY_TWO_CLIENT_SECRET` | Identifiants de ton app OAuth 42 (https://profile.intra.42.fr/oauth/applications) — à remplir toi-même, jamais en clair dans git |
-| `FORTY_TWO_REDIRECT_URI` | Doit être **exactement identique** des deux côtés — voir ci-dessous |
+| `FORTY_TWO_REDIRECT_URI` | Dérivée de `DOMAIN_NAME` dans `compose.yml` (`https://${DOMAIN_NAME}/api/auth/callback`) — doit être **exactement identique** à ce qui est déclaré côté 42, voir ci-dessous |
+| `API_KEY_RATE_LIMIT_PER_MINUTE` | Rate limit des clés API publiques côté `backend` |
+
 
 ### Déclarer ta clé 42 (redirect URI)
 
-Sur https://profile.intra.42.fr/oauth/applications, la redirect URI déclarée sur ton app doit être **caractère pour caractère** celle de `FORTY_TWO_REDIRECT_URI` :
+Sur https://profile.intra.42.fr/oauth/applications, la redirect URI déclarée sur ton app doit être **caractère pour caractère** celle que `compose.yml` construit à partir de `DOMAIN_NAME` :
 
 ```
-https://localhost:8443/api/auth/callback
+https://<DOMAIN_NAME>/api/auth/callback
+# ex. avec le défaut dev : https://localhost:8443/api/auth/callback
 ```
 
-Le préfixe `/api/` compte : c'est celui que route `proxy` vers `backend` (voir « Ce qui tourne »). Une valeur différente (ex. `https://localhost:8443/auth/callback` sans `/api`, ou `http://localhost:8000/auth/callback` en direct backend) fait échouer l'échange OAuth avec une erreur de redirect URI côté 42, puisque l'API 42 compare l'URI reçue à celle déclarée au caractère près.
+Le préfixe `/api/` compte : c'est celui que route `proxy` vers `backend` (voir « Ce qui tourne »). Une valeur différente (ex. sans `/api`, un autre `DOMAIN_NAME`, ou en direct backend) fait échouer l'échange OAuth avec une erreur de redirect URI côté 42, puisque l'API 42 compare l'URI reçue à celle déclarée au caractère près. Si tu changes `DOMAIN_NAME` (ex. pour héberger sur un hostname du réseau 42), il faut aussi mettre à jour la redirect URI déclarée sur `profile.intra.42.fr`.
 
-Le reste des valeurs par défaut de `.env.example` suffit pour lancer `db` + `backend` + `web` + `proxy` en local. Ton `.env` rempli ne doit **jamais** être committé ni partagé en clair (Slack, PR, issue…) — chacun le garde localement.
-
-`apps/server/.env.example` documente les mêmes variables côté API pour lancer l'API sans Docker (voir README racine) — un fichier de doc/convenance pour ce cas, pas une dépendance du chemin Docker : `apps/server/.env` n'existe pas dans le repo (exclu par le `.dockerignore`), l'API en container ne voit que ce que Compose injecte depuis le `.env` de la racine. Une seule source de vérité pour `make up`.
+Copier `.env.example` en `.env` ne suffit **pas** à lancer la stack tel quel : `FORTY_TWO_CLIENT_ID`/`FORTY_TWO_CLIENT_SECRET` y sont vides par design (secrets, jamais commités), et chaque variable requise fait crasher `docker compose up` si elle est absente ou vide (`${VAR:?manquant dans .env}`, voir tableau ci-dessus). Il faut au minimum remplir tes creds OAuth 42 avant `make up`.
+Ton `.env` rempli ne doit **jamais** être committé ni partagé en clair (Slack, PR, issue…) — chacun le garde localement.
 
 Reste ouvert : `JWT_SECRET` et `FORTY_TWO_CLIENT_SECRET` transitent en clair dans le fichier d'environnement du container. Les secrets Compose (`secrets:` + convention `_FILE`) seraient plus propres, mais demandent que `app/config.py` sache lire une valeur depuis un fichier — à arbitrer avec Malik, pas fait.
 
@@ -170,7 +176,7 @@ Rien n'oblige à passer par Compose : Postgres via Homebrew + `uv run uvicorn` e
 | Une modif de `infra/nginx/nginx.conf` n'a aucun effet | `make restart` (ou `nginx -s reload`) ne suffit pas : le fichier est monté en bind mount **fichier**, attaché à son inode d'origine. La plupart des éditeurs écrivent un nouveau fichier puis le renomment → nouvel inode, et le container continue de servir l'ancien contenu | `make down && make up` (recrée les containers, donc remonte le fichier). Pour vérifier ce que voit vraiment nginx : `docker compose exec proxy cat /etc/nginx/conf.d/default.conf` |
 | `proxy` reste `unhealthy` alors que le site répond | La sonde `/nginx-health` ne renvoie pas 200 | `docker compose exec proxy wget -qO- http://127.0.0.1/nginx-health` doit afficher `ok`. Attention : un `return` placé directement dans un bloc `server` s'exécute avant la sélection des `location` et court-circuiterait la sonde |
 | Erreur de redirect URI au login 42 | `FORTY_TWO_REDIRECT_URI` (`.env`) ne correspond pas *exactement* à l'URI déclarée sur https://profile.intra.42.fr/oauth/applications | Les deux doivent être identiques caractère pour caractère : `https://localhost:8443/api/auth/callback` |
-| CORS bloqué côté front | `CORS_ORIGINS` ne contient pas l'origine exacte du front | Ajouter l'origine dans `.env` (`CORS_ORIGINS`), redémarrer l'API |
+| CORS bloqué côté front | `VITE_API_URL` n'est pas relative (`/api`) — tout doit passer par `proxy`, aucun cross-origin prévu | Vérifier `VITE_API_URL=/api` dans `.env`, rebuild `web` |
 
 ## Ce qui n'est pas encore fait (prochaines étapes DevOps)
 

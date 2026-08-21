@@ -3,9 +3,18 @@
 x-server-base: &server-base
   build: ./apps/server
   image: ${COMPOSE_PROJECT_NAME:-better-intra}-server
-  env_file: .env
   environment:
-    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ENVIRONMENT: ${ENVIRONMENT:?manquant dans .env}
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?manquant dans .env}:${POSTGRES_PASSWORD:?manquant dans .env}@db:5432/${POSTGRES_DB:?manquant dans .env}
+    FRONTEND_URL: https://${DOMAIN_NAME:?manquant dans .env}
+    JWT_SECRET: ${JWT_SECRET:?manquant dans .env}
+    JWT_ALGORITHM: ${JWT_ALGORITHM:?manquant dans .env}
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:?manquant dans .env}
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:?manquant dans .env}
+    FORTY_TWO_CLIENT_ID: ${FORTY_TWO_CLIENT_ID:?manquant dans .env}
+    FORTY_TWO_CLIENT_SECRET: ${FORTY_TWO_CLIENT_SECRET:?manquant dans .env}
+    FORTY_TWO_REDIRECT_URI: https://${DOMAIN_NAME:?manquant dans .env}/api/auth/callback
+    API_KEY_RATE_LIMIT_PER_MINUTE: ${API_KEY_RATE_LIMIT_PER_MINUTE:?manquant dans .env}
   # Bind mount dev pour le hot reload et le debug.
 #  volumes:
 #    - ./apps/server/app:/app/app
@@ -61,7 +70,7 @@ services:
       context: ./apps/web
       # VITE_API_URL est utilisee au build seulement.
       args:
-        VITE_API_URL: ${VITE_API_URL:-https://localhost:8443/api}
+        VITE_API_URL: ${VITE_API_URL:-/api}
     image: ${COMPOSE_PROJECT_NAME:-better-intra}-web
     restart: unless-stopped
     depends_on:
