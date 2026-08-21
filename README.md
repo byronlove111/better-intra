@@ -13,7 +13,7 @@ Product scope: [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md).
 | **Swan** | Frontend — [`apps/web`](apps/web) |
 | **Malik** | Backend API — [`apps/server`](apps/server) |
 | **Ayoub** | Docker / HTTPS / run éval — [`docs/devops.md`](docs/devops.md) |
-| **Kylian** | Recommendations scoring |
+| **Kylian** | TBD (reco hors scope) — à réassigner |
 
 ## Quick links (dev local)
 

@@ -2,7 +2,7 @@
 
 Modern Intra-like dashboard for 42: read from the official 42 API (OAuth), write social/org features to our own PostgreSQL.
 
-Product scope: `docs/cahier-des-charges.md` (18 pts target).
+Product scope: `docs/cahier-des-charges.md` (15 pts target; i18n + peer reco + advanced event search hors scope).
 
 Docs API (Docusaurus) : `apps/docs` (`pnpm start` → http://localhost:3000).
 
@@ -80,6 +80,6 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Next steps
 
-1. Peer recommendations
-2. HTTPS + Compose (Ayoub)
-3. Privacy Policy + Terms of Service + i18n (Swan)
+1. Privacy Policy + Terms of Service (Swan)
+2. README EN (rôles PO/PM/TL + modules) — polish
+3. DevOps Compose / HTTPS — polish Ayoub

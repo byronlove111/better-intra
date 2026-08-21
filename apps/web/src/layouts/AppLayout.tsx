@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  Bell,
   CalendarDays,
   ClipboardCheck,
   FolderKanban,
@@ -10,36 +9,15 @@ import {
   UserRound,
   Users,
 } from "lucide-react"
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import type { AuthUser } from "@/features/auth/auth-api"
-import { clearTokens } from "@/features/auth/auth-storage"
-import { getNotifications } from "@/features/dashboard/dashboard-api"
+import { getCurrentUser } from "@/features/auth/auth-api"
+import { clearTokens, getAccessToken } from "@/features/auth/auth-storage"
+import { NotificationsMenu } from "@/features/notifications/NotificationsMenu"
 import { useRealtimeSocket } from "@/features/realtime/useRealtimeSocket"
 import { UserSearch } from "@/features/search/UserSearch"
 import { cn } from "@/lib/utils"
-
-const previewNotifications = [
-  {
-    id: 1,
-    body: "Alice a commencé à te suivre.",
-    url: "/dashboard",
-  },
-  {
-    id: 2,
-    body: "Un nouvel événement BetterIntra a été créé.",
-    url: "/dashboard",
-  },
-]
 
 export function AppLayout() {
   const navigate = useNavigate()
@@ -53,29 +31,15 @@ export function AppLayout() {
       || preview === "projects"
       || preview === "evaluations"
     )
-  const currentUser = queryClient.getQueryData<AuthUser>(["auth", "me"])
+  const currentUserRequest = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: getCurrentUser,
+    enabled: Boolean(getAccessToken()) && !isPreview,
+  })
+  const currentUser = currentUserRequest.data
   const realtimeEnabled =
     !isPreview && currentUser?.is_intra_linked === true
   useRealtimeSocket(realtimeEnabled)
-  const notificationsRequest = useQuery({
-    queryKey: ["notifications"],
-    queryFn: getNotifications,
-    enabled: realtimeEnabled,
-  })
-  const notifications = isPreview
-    ? previewNotifications
-    : (notificationsRequest.data ?? [])
-  let notificationsMessage: string | null = null
-
-  if (!isPreview && currentUser?.is_intra_linked !== true) {
-    notificationsMessage = "Lie ton compte 42 pour recevoir des notifications."
-  } else if (!isPreview && notificationsRequest.isPending) {
-    notificationsMessage = "Chargement des notifications…"
-  } else if (!isPreview && notificationsRequest.isError) {
-    notificationsMessage = "Les notifications sont indisponibles."
-  } else if (notifications.length === 0) {
-    notificationsMessage = "Aucune notification récente"
-  }
 
   function logout() {
     clearTokens()
@@ -229,41 +193,10 @@ export function AppLayout() {
             />
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" size="icon">
-                  <Bell />
-                  <span className="sr-only">Ouvrir les notifications</span>
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuGroup>
-                {notificationsMessage ? (
-                  <DropdownMenuItem disabled>
-                    {notificationsMessage}
-                  </DropdownMenuItem>
-                ) : (
-                  notifications.map((notification) => (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      render={
-                        <Link
-                          to={isPreview
-                            ? `${notification.url}?preview=dashboard`
-                            : notification.url}
-                        />
-                      }
-                    >
-                      {notification.body}
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationsMenu
+            currentUser={currentUser}
+            isPreview={isPreview}
+          />
         </header>
 
         <main
