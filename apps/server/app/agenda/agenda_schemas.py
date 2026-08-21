@@ -9,6 +9,16 @@ class AgendaSource(StrEnum):
     betterintra = "betterintra"
 
 
+class AgendaCreatorOut(BaseModel):
+    """BetterIntra event creator (for profile / DM links)."""
+
+    id: int
+    login: str | None = None
+    display_name: str | None = None
+    avatar_url: str | None = None
+    is_intra_linked: bool = False
+
+
 class AgendaEventOut(BaseModel):
     """Normalized calendar item across Intra + BetterIntra (extra sources later)."""
 
@@ -23,6 +33,10 @@ class AgendaEventOut(BaseModel):
     url: str | None = None
     kind: str | None = Field(default=None, description="Intra kind / optional category")
     creator_id: int | None = Field(default=None, description="BetterIntra creator when source=betterintra")
+    creator: AgendaCreatorOut | None = Field(
+        default=None,
+        description="Creator profile snippet when source=betterintra",
+    )
     can_edit: bool = False
 
 

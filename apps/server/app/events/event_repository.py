@@ -13,6 +13,7 @@ def create(
     title: str,
     description: str | None,
     location: str | None,
+    url: str | None,
     begin_at: datetime,
     end_at: datetime,
 ) -> Event:
@@ -21,6 +22,7 @@ def create(
         title=title,
         description=description,
         location=location,
+        url=url,
         begin_at=begin_at,
         end_at=end_at,
     )
@@ -34,6 +36,24 @@ def list_all(db: Session, *, limit: int = 100, offset: int = 0) -> list[Event]:
     return list(
         db.scalars(
             select(Event).order_by(Event.begin_at.asc()).offset(offset).limit(limit)
+        ).all()
+    )
+
+
+def list_by_creator(
+    db: Session,
+    *,
+    creator_id: int,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[Event]:
+    return list(
+        db.scalars(
+            select(Event)
+            .where(Event.creator_id == creator_id)
+            .order_by(Event.begin_at.asc())
+            .offset(offset)
+            .limit(limit)
         ).all()
     )
 

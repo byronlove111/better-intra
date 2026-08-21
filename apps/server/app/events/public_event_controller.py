@@ -19,9 +19,14 @@ def list_events(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user_from_api_key),
+    current_user: User = Depends(get_current_user_from_api_key),
 ) -> list[EventOut]:
-    return event_service.list_events(db, limit=limit, offset=offset)
+    return event_service.list_events(
+        db,
+        creator_id=current_user.id,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post(
@@ -46,9 +51,9 @@ async def create_event(
 def get_event(
     event_id: int,
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user_from_api_key),
+    current_user: User = Depends(get_current_user_from_api_key),
 ) -> EventOut:
-    return event_service.get_event(db, event_id)
+    return event_service.get_event(db, event_id, owner=current_user)
 
 
 @router.put(

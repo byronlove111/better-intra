@@ -555,7 +555,14 @@ export function DashboardPage() {
                   <CalendarDays />
                   Prochains événements
                 </CardTitle>
-                <CardDescription>Les cinq prochains événements.</CardDescription>
+                <CardDescription>
+                  Les cinq prochains événements.{" "}
+                  {!isPreview && (
+                    <Link to="/agenda" className="underline-offset-4 hover:underline">
+                      Voir l’agenda
+                    </Link>
+                  )}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {eventsRequest.isPending && !isPreview ? (
