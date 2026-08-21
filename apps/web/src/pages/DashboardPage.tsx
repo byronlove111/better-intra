@@ -25,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { EmptyState } from "@/components/EmptyState"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -448,9 +449,11 @@ export function DashboardPage() {
                     Les amis en ligne sont temporairement indisponibles.
                   </p>
                 ) : onlineFriends.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Aucun ami n’est en ligne actuellement.
-                  </p>
+                  <EmptyState
+                    icon={Users}
+                    title="Personne en ligne"
+                    description="Aucun ami n’est en ligne actuellement."
+                  />
                 ) : (
                   <ul className="flex flex-col gap-4">
                     {onlineFriends.map((friend) => (
@@ -513,9 +516,11 @@ export function DashboardPage() {
                     Les évaluations sont temporairement indisponibles.
                   </p>
                 ) : evaluations.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Aucune évaluation à venir ou à finaliser.
-                  </p>
+                  <EmptyState
+                    icon={ClipboardCheck}
+                    title="Aucune évaluation"
+                    description="Aucune évaluation à venir ou à finaliser."
+                  />
                 ) : (
                   <ul className="flex flex-col gap-4">
                     {evaluations.map((evaluation) => {
@@ -577,9 +582,11 @@ export function DashboardPage() {
                     Les événements sont temporairement indisponibles.
                   </p>
                 ) : events.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Aucun événement à venir.
-                  </p>
+                  <EmptyState
+                    icon={CalendarDays}
+                    title="Aucun événement"
+                    description="Aucun événement à venir."
+                  />
                 ) : (
                   <ul className="flex flex-col gap-4">
                     {events.map((event) => (

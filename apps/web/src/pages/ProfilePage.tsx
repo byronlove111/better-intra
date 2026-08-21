@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { EmptyState } from "@/components/EmptyState"
 import {
   Field,
   FieldDescription,
@@ -511,9 +512,11 @@ export function ProfilePage() {
                   Les projets sont temporairement indisponibles.
                 </p>
               ) : projects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Aucun projet à afficher.
-                </p>
+                <EmptyState
+                  icon={FolderKanban}
+                  title="Aucun projet"
+                  description="Aucun projet à afficher."
+                />
               ) : (
                 <ul className="flex flex-col gap-3">
                   {projects.map((project) => {

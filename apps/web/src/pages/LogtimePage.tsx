@@ -26,6 +26,7 @@ import {
   YAxis,
 } from "recharts"
 
+import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -51,13 +52,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
 import {
   Popover,
   PopoverContent,
@@ -539,14 +533,11 @@ function StatCard({
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <Empty className="min-h-72 border">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Timer />
-        </EmptyMedia>
-        <EmptyTitle>Pas de données</EmptyTitle>
-        <EmptyDescription>{message}</EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <EmptyState
+      className="min-h-72"
+      icon={Timer}
+      title="Pas de données"
+      description={message}
+    />
   )
 }

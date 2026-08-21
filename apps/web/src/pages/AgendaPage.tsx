@@ -26,6 +26,7 @@ import {
   Plus,
   Trash2,
   UserRound,
+  CalendarDays,
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
@@ -34,6 +35,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { EmptyState } from "@/components/EmptyState"
 import {
   Drawer,
   DrawerClose,
@@ -400,9 +402,11 @@ export function AgendaPage() {
 
               <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-4">
                 {selectedEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Crée un event pour cette journée.
-                  </p>
+                  <EmptyState
+                    icon={CalendarDays}
+                    title="Aucun event"
+                    description="Crée un event pour cette journée."
+                  />
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {selectedEvents.map((event) => (

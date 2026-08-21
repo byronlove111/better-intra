@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/EmptyState"
 import {
   Drawer,
   DrawerClose,
@@ -253,9 +254,11 @@ export function ApiKeysDrawer({ open, onOpenChange }: ApiKeysDrawerProps) {
               </p>
             )}
             {!keysRequest.isPending && !listError && activeKeys.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Aucune clé active.
-              </p>
+              <EmptyState
+                icon={KeyRound}
+                title="Aucune clé active"
+                description="Crée une clé pour accéder à l’API publique des events."
+              />
             )}
             <ul className="flex flex-col gap-2">
               {activeKeys.map((key) => (

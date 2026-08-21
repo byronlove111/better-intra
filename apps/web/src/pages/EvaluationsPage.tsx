@@ -4,6 +4,7 @@ import { Fragment, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { PagePagination } from "@/components/PagePagination"
+import { EmptyState } from "@/components/EmptyState"
 import {
   Card,
   CardContent,
@@ -143,9 +144,11 @@ export function EvaluationsPage() {
         </CardHeader>
         <CardContent>
           {visibleEvaluations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aucune évaluation dans cette catégorie sur cette page.
-            </p>
+            <EmptyState
+              icon={ClipboardCheck}
+              title="Aucune évaluation"
+              description="Aucune évaluation dans cette catégorie sur cette page."
+            />
           ) : (
             <Table>
               <TableHeader className="[&_tr]:border-b-2">

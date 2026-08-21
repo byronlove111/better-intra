@@ -3,16 +3,10 @@ import { ArrowLeft, MessageCircle, SendHorizontal } from "lucide-react"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
+import { EmptyState } from "@/components/EmptyState"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   InputGroup,
   InputGroupAddon,
@@ -335,13 +329,17 @@ function ChatThread({
 
   if (!conversation || loadError) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
-        <p className="text-sm text-destructive">
-          {loadError ?? "Conversation introuvable"}
-        </p>
-        <Button variant="outline" onClick={() => navigate("/conversations")}>
-          Retour aux conversations
-        </Button>
+      <div className="flex flex-1 items-center justify-center p-6">
+        <EmptyState
+          className="max-w-md"
+          icon={MessageCircle}
+          title="Conversation introuvable"
+          description={loadError ?? "Cette conversation n’existe pas ou n’est plus accessible."}
+        >
+          <Button variant="outline" onClick={() => navigate("/conversations")}>
+            Retour aux conversations
+          </Button>
+        </EmptyState>
       </div>
     )
   }
@@ -395,15 +393,12 @@ function NewChatComposer({ currentUserId }: { currentUserId: number }) {
   if (!toLogin) {
     return (
       <div className="flex w-full flex-1 items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Chat</CardTitle>
-            <CardDescription>
-              Choisis une conversation à gauche, ou ouvre le profil d’un ami
-              BetterIntra pour démarrer un DM.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          className="max-w-md"
+          icon={MessageCircle}
+          title="Aucune conversation sélectionnée"
+          description="Choisis une conversation à gauche, ou ouvre le profil d’un ami BetterIntra pour démarrer un DM."
+        />
       </div>
     )
   }
@@ -415,9 +410,12 @@ function NewChatComposer({ currentUserId }: { currentUserId: number }) {
         <p className="text-sm text-muted-foreground">@{toLogin}</p>
       </header>
       <div className="flex flex-1 items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">
-          Envoie un premier message pour créer le thread.
-        </p>
+        <EmptyState
+          className="max-w-md"
+          icon={MessageCircle}
+          title="Nouveau thread"
+          description="Envoie un premier message pour créer la conversation."
+        />
       </div>
       <ChatComposer
         disabled={!toLogin}
@@ -516,20 +514,16 @@ export function ChatPage() {
 
   if (!isIntraLinked || !currentUserRequest.data) {
     return (
-      <Card className="max-w-xl border-l-4 border-l-primary">
-        <CardHeader>
-          <CardTitle>Chat</CardTitle>
-          <CardDescription>
-            Lie ton compte Intra 42 pour discuter avec d’autres élèves
-            BetterIntra.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button render={<Link to="/dashboard" />}>
-            Aller au dashboard
-          </Button>
-        </CardContent>
-      </Card>
+      <EmptyState
+        className="max-w-xl"
+        icon={MessageCircle}
+        title="Chat indisponible"
+        description="Lie ton compte Intra 42 pour discuter avec d’autres élèves BetterIntra."
+      >
+        <Button render={<Link to="/dashboard" />}>
+          Aller au dashboard
+        </Button>
+      </EmptyState>
     )
   }
 
@@ -569,9 +563,11 @@ export function ChatPage() {
           {!conversationsRequest.isPending
             && !listError
             && conversations.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Aucune conversation. Ouvre un profil BetterIntra pour écrire.
-              </p>
+              <EmptyState
+                icon={MessageCircle}
+                title="Aucune conversation"
+                description="Ouvre un profil BetterIntra pour écrire."
+              />
             )}
           {conversations.map((conversation) => (
             <ConversationListItem
