@@ -29,7 +29,7 @@ type NotificationsResponse = {
 
 export async function getNotifications() {
   const response = await apiRequest<NotificationsResponse>(
-    "/notifications?limit=5",
+    "/notifications?limit=20",
   )
 
   return response.items

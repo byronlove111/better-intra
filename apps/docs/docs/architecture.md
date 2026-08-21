@@ -36,6 +36,6 @@ Les passwords users sont Argon2id dans `password_hash`. Les clés API sont hash�
 
 ## Docs produit autour
 
-Le [cahier des charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md) fixe le scope 18 pts. Le déploiement et le brief DevOps sont dans `docs/deploiement.md` et `docs/devops.md`.
+Le [cahier des charges](https://github.com/byronlove111/better-intra/blob/main/docs/cahier-des-charges.md) fixe le scope 15 pts (i18n + peer reco + recherche events avancée hors scope). Le déploiement et le brief DevOps sont dans `docs/deploiement.md` et `docs/devops.md`.
 
 Ensuite : [Premiers pas](./getting-started) si tu n’as pas encore de token, [Authentification](./auth) pour OAuth, [Cookbook front](./frontend-cookbook) pour l’intégration écran par écran.

@@ -199,4 +199,4 @@ Un **401** veut dire JWT à rafraîchir ou login. Un **403** sur une feature cam
 
 ## Pas encore là
 
-`GET /recommendations` (module of choice) n’est pas shippé : quand il le sera, on ajoutera une page dédiée et une section ici.
+`GET /recommendations` (peer reco) est **hors scope** CDC v1.11 — pas de page dédiée prévue.
