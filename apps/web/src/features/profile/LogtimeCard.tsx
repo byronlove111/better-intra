@@ -43,6 +43,8 @@ type LogtimeCardProps = {
   canExport?: boolean
   exportBeginAt?: string
   exportEndAt?: string
+  /** Show that analytics auto-refresh while open. */
+  liveUpdates?: boolean
 }
 
 export function LogtimeCard({
@@ -59,6 +61,7 @@ export function LogtimeCard({
   canExport = false,
   exportBeginAt,
   exportEndAt,
+  liveUpdates = false,
 }: LogtimeCardProps) {
   const [exportPending, setExportPending] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -145,7 +148,12 @@ export function LogtimeCard({
             ? "Chargement du logtime…"
             : isError
               ? "Logtime temporairement indisponible"
-              : `${logtime?.total_hours ?? 0} h ce mois-ci · ${logtime?.active_days ?? 0} jours actifs`}
+              : (
+                  <>
+                    {`${logtime?.total_hours ?? 0} h ce mois-ci · ${logtime?.active_days ?? 0} jours actifs`}
+                    {liveUpdates ? " · maj auto 10 min" : null}
+                  </>
+                )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
