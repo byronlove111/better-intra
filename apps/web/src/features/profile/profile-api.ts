@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api"
+import { apiDownload, apiRequest } from "@/lib/api"
 
 type ProfileCursus = {
   name: string | null
@@ -22,6 +22,7 @@ type ProfileIntra = {
 }
 
 export type UserProfile = {
+  id?: number | null
   login: string | null
   display_name: string | null
   avatar_url: string | null
@@ -29,12 +30,14 @@ export type UserProfile = {
   bio: string | null
   is_betterintra_linked: boolean
   is_intra_linked: boolean
+  is_online?: boolean | null
   intra: ProfileIntra | null
 }
 
 export type FriendStats = {
   following_count: number
   followers_count: number
+  is_following?: boolean | null
 }
 
 export type ProfileLogtime = {
@@ -132,4 +135,18 @@ export async function getProfileLogtime(
       duration_hours: Math.round((day.duration_seconds / 3600) * 100) / 100,
     })),
   }
+}
+
+export type LogtimeExportFormat = "csv" | "pdf"
+
+export function exportMyLogtime(
+  format: LogtimeExportFormat,
+  beginAt: string,
+  endAt: string,
+) {
+  const query = new URLSearchParams({ begin_at: beginAt, end_at: endAt })
+  const extension = format === "csv" ? "csv" : "pdf"
+  return apiDownload(`/analytics/logtime/export.${extension}?${query}`, {
+    filename: `logtime.${extension}`,
+  })
 }

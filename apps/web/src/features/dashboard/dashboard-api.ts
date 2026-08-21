@@ -1,4 +1,7 @@
+import type { PresencePeer } from "@/features/realtime/presence-types"
 import { apiRequest } from "@/lib/api"
+
+export type OnlineFriend = PresencePeer
 
 export type AgendaEvent = {
   id: string
@@ -53,14 +56,6 @@ type EvaluationsResponse = {
     page_size: number
     total: number | null
   }
-}
-
-export type OnlineFriend = {
-  id: number
-  login: string
-  display_name: string | null
-  avatar_url: string | null
-  is_online: boolean
 }
 
 type PresenceResponse = {
