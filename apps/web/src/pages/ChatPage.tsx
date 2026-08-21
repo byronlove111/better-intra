@@ -547,7 +547,6 @@ export function ChatPage() {
           <MessageCircle className="text-muted-foreground" />
           <div>
             <h1 className="font-semibold tracking-tight">Messages</h1>
-            <p className="text-xs text-muted-foreground">DM 1-to-1</p>
           </div>
         </div>
 
