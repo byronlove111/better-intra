@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import {
   CalendarDays,
+  ChevronsUpDown,
   ClipboardCheck,
   FolderKanban,
   LayoutDashboard,
@@ -18,6 +19,14 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -29,7 +38,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import type { AuthUser } from "@/features/auth/auth-api"
 import { getInitials } from "@/features/profile/profile-display"
@@ -88,6 +97,112 @@ function buildNavItems(isPreview: boolean): NavItem[] {
   ]
 }
 
+function NavUser({
+  isPreview,
+  currentUser,
+  onLogout,
+}: {
+  isPreview: boolean
+  currentUser: AuthUser | undefined
+  onLogout: () => void
+}) {
+  const { isMobile } = useSidebar()
+
+  const displayName =
+    currentUser?.display_name
+    ?? currentUser?.login
+    ?? (isPreview ? "Preview" : "Compte")
+  const login = currentUser?.login ?? (isPreview ? "preview" : null)
+  const handle = login ? `@${login}` : "Mon profil"
+  const profileTo = isPreview ? "/profile?preview=profile" : "/profile"
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                size="lg"
+                className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
+                tooltip={displayName}
+              />
+            }
+          >
+            <Avatar className="size-8 rounded-lg">
+              <AvatarImage
+                src={currentUser?.avatar_url ?? undefined}
+                alt={displayName}
+              />
+              <AvatarFallback className="rounded-lg">
+                {getInitials(displayName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-medium">{displayName}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {handle}
+              </span>
+            </div>
+            <ChevronsUpDown className="ml-auto" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="min-w-56 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            align="end"
+            sideOffset={4}
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                render={<Link to={profileTo} />}
+                className="gap-2 p-2"
+              >
+                <Avatar className="size-8 rounded-lg">
+                  <AvatarImage
+                    src={currentUser?.avatar_url ?? undefined}
+                    alt={displayName}
+                  />
+                  <AvatarFallback className="rounded-lg">
+                    {getInitials(displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">{displayName}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {handle}
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuGroup>
+              <DropdownMenuItem render={<Link to="/privacy" />}>
+                <ShieldCheck />
+                Confidentialité
+              </DropdownMenuItem>
+              <DropdownMenuItem render={<Link to="/terms" />}>
+                <Scale />
+                Conditions
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={onLogout}>
+                <LogOut />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
 export function AppSidebar({
   isPreview,
   currentUser,
@@ -95,12 +210,6 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const location = useLocation()
   const items = buildNavItems(isPreview)
-  const displayName =
-    currentUser?.display_name
-    ?? currentUser?.login
-    ?? (isPreview ? "Preview" : "Compte")
-  const login = currentUser?.login ?? (isPreview ? "preview" : null)
-  const profileTo = isPreview ? "/profile?preview=profile" : "/profile"
 
   return (
     <Sidebar collapsible="icon">
@@ -152,61 +261,11 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarSeparator />
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              render={<Link to="/privacy" />}
-              tooltip="Confidentialité"
-            >
-              <ShieldCheck />
-              <span>Confidentialité</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              render={<Link to="/terms" />}
-              tooltip="Conditions d’utilisation"
-            >
-              <Scale />
-              <span>Conditions</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarSeparator />
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              render={<Link to={profileTo} />}
-              tooltip={displayName}
-              isActive={location.pathname.startsWith("/profile")}
-            >
-              <Avatar className="size-8 rounded-lg">
-                <AvatarImage
-                  src={currentUser?.avatar_url ?? undefined}
-                  alt={displayName}
-                />
-                <AvatarFallback className="rounded-lg">
-                  {getInitials(displayName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {login ? `@${login}` : "Mon profil"}
-                </span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Déconnexion"
-              onClick={onLogout}
-            >
-              <LogOut />
-              <span>Déconnexion</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <NavUser
+          isPreview={isPreview}
+          currentUser={currentUser}
+          onLogout={onLogout}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
