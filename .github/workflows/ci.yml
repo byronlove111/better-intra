@@ -57,3 +57,30 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -q
+
+  frontend-build:
+    name: Frontend build (pnpm + tsc + vite)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (typecheck + vite build)
+        run: pnpm run build
