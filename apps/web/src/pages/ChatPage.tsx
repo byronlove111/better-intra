@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, MessageCircle, SendHorizontal } from "lucide-react"
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { EmptyState } from "@/components/EmptyState"
@@ -124,12 +124,14 @@ function ChatComposer({
   error: string | null
 }) {
   const [draft, setDraft] = useState("")
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   function submit() {
     const body = draft.trim()
     if (!body || pending || disabled) return
     onSend(body)
     setDraft("")
+    textareaRef.current?.focus()
   }
 
   return (
@@ -141,8 +143,9 @@ function ChatComposer({
       )}
       <InputGroup>
         <InputGroupTextarea
+          ref={textareaRef}
           value={draft}
-          disabled={disabled || pending}
+          disabled={disabled}
           placeholder="Écrire un message…"
           rows={1}
           onChange={(event) => setDraft(event.target.value)}
@@ -155,9 +158,11 @@ function ChatComposer({
         />
         <InputGroupAddon align="block-end">
           <InputGroupButton
+            type="button"
             variant="default"
             size="sm"
             disabled={disabled || pending || !draft.trim()}
+            onMouseDown={(event) => event.preventDefault()}
             onClick={submit}
           >
             <SendHorizontal data-icon="inline-start" />
