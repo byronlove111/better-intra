@@ -33,9 +33,9 @@ export function IntraStatsCards({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock3 />
-            Black hole
+            Prochaine milestone
           </CardTitle>
-          <CardDescription>Date limite actuelle</CardDescription>
+          <CardDescription>Échéance de la prochaine milestone</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-lg font-semibold">
@@ -45,7 +45,7 @@ export function IntraStatsCards({
             <p className="text-xs text-muted-foreground">
               {daysRemaining >= 0
                 ? `${daysRemaining} jours restants`
-                : "Date dépassée"}
+                : "Milestone dépassée"}
             </p>
           )}
         </CardContent>

@@ -208,15 +208,33 @@ function ChatThreadShell({
             <span className="sr-only">Retour</span>
           </Button>
         ) : null}
-        <Avatar>
-          <AvatarImage
-            src={resolveMediaUrl(peer.avatar_url)}
-            alt={`Photo de ${peer.login}`}
-          />
-          <AvatarFallback>
-            {getInitials(peer.display_name ?? peer.login)}
-          </AvatarFallback>
-        </Avatar>
+        {peerProfileHref ? (
+          <Link
+            to={peerProfileHref}
+            aria-label={`Profil de ${peer.display_name ?? peer.login}`}
+            className="rounded-full outline-none hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <Avatar>
+              <AvatarImage
+                src={resolveMediaUrl(peer.avatar_url)}
+                alt={`Photo de ${peer.login}`}
+              />
+              <AvatarFallback>
+                {getInitials(peer.display_name ?? peer.login)}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
+        ) : (
+          <Avatar>
+            <AvatarImage
+              src={resolveMediaUrl(peer.avatar_url)}
+              alt={`Photo de ${peer.login}`}
+            />
+            <AvatarFallback>
+              {getInitials(peer.display_name ?? peer.login)}
+            </AvatarFallback>
+          </Avatar>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate font-medium">
@@ -226,15 +244,6 @@ function ChatThreadShell({
           </div>
           <p className="truncate text-sm text-muted-foreground">@{peer.login}</p>
         </div>
-        {peerProfileHref ? (
-          <Button
-            variant="outline"
-            size="sm"
-            render={<Link to={peerProfileHref} />}
-          >
-            Profil
-          </Button>
-        ) : null}
       </header>
 
       <MessageScrollerProvider autoScroll>
