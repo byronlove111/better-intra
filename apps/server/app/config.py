@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,8 +13,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     frontend_url: str = "http://localhost:3000"
 
-    # Auth / JWT — values required before enabling auth routes
-    jwt_secret: str = "dev-only-change-me-to-a-long-random-secret"
+    # Auth / JWT — JWT_SECRET must come from the environment (no code default).
+    jwt_secret: str = Field(min_length=16)
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
     jwt_refresh_token_expire_days: int = 30
@@ -35,6 +36,18 @@ class Settings(BaseSettings):
 
     # Intra API response cache (Redis). Empty = cache disabled.
     redis_url: str = "redis://localhost:6379/0"
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def jwt_secret_from_env(cls, value: str) -> str:
+        secret = value.strip()
+        placeholders = {
+            "dev-only-change-me-to-a-long-random-secret",
+            "change-me-generate-a-long-random-secret",
+        }
+        if not secret or secret in placeholders:
+            raise ValueError("JWT_SECRET must be set in the environment (not empty, not a placeholder)")
+        return secret
 
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

@@ -313,6 +313,8 @@ POSTGRES_USER=betterintra
 POSTGRES_PASSWORD=choose-a-password
 POSTGRES_DB=betterintra
 
+JWT_SECRET=  # openssl rand -base64 48 — required, no code default
+
 FORTY_TWO_CLIENT_ID=your-42-client-id
 FORTY_TWO_CLIENT_SECRET=your-42-client-secret
 ```
