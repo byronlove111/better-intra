@@ -117,17 +117,22 @@ services:
       retries: 3
       start_period: 5s
 
-  # Outil de dev : visualiseur de tables. A retirer (test seeding)
-  adminer:
-    image: adminer:5
-    profiles: ["tools"]
-    environment:
-      ADMINER_DEFAULT_SERVER: db:5432
-    ports:
-      - "127.0.0.1:8081:8080"
-    depends_on:
-      db:
-        condition: service_healthy
+  # Collecte des metriques. Jamais un
+  # demarre avec "make monitoring-up".
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["monitoring"]
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9090/-/healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
 volumes:
   db_data:
+  prometheus_data:

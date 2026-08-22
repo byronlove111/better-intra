@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs ps clean certs db-ui db-ui-down ci-backend
+.PHONY: help up down restart logs ps clean certs ci-backend monitoring-up monitoring-down
 
 help:
 	@echo "BetterIntra — commandes :"
@@ -9,8 +9,8 @@ help:
 	@echo "  make ps       - liste les containers et leur etat"
 	@echo "  make clean    - down + supprime les images buildees (garde le volume Postgres)"
 	@echo "  make certs    - (re)genere le certificat self-signed du proxy nginx"
-	@echo "  make db-ui    - lance Adminer sur http://localhost:8081 (visualiseur de tables)"
-	@echo "  make db-ui-down - stoppe Adminer"
+	@echo "  make monitoring-up   - lance Prometheus/Grafana en plus (profile monitoring)"
+	@echo "  make monitoring-down - stoppe les containers du profile monitoring"
 	@echo "  make ci-backend - rejoue en local le job CI des tests backend (cf. .github/workflows/README.md)"
 
 CERT_DIR := infra/nginx/certs
@@ -52,15 +52,13 @@ ps:
 clean: down
 	$(COMPOSE) down --rmi all
 
-# Adminer appartien au profil "[tools]" dans le compose
-# "down" le stoppe quand même
-db-ui:
-	$(COMPOSE) --profile tools up -d adminer
-	@echo "Adminer : http://localhost:8081  (serveur pre-rempli : db:5432)"
-	@echo "Identifiants : POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB de ton .env"
+# Profile monitoring : jamais un prerequis de "make up", opt-in seulement.
+monitoring-up:
+	$(COMPOSE) --profile monitoring up -d
+	@echo "Prometheus : http://localhost:9090 (pas de port publie -> exec docker ou tunnel ssh en attendant Grafana)"
 
-db-ui-down:
-	$(COMPOSE) --profile tools stop adminer
+monitoring-down:
+	$(COMPOSE) --profile monitoring stop
 
 # Base jetable du job CI backend-tests. Port 5433 : ne gene pas un Postgres local.
 CI_PG := betterintra-ci-pg
