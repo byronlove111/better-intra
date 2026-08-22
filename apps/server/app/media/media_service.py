@@ -3,12 +3,29 @@
 from __future__ import annotations
 
 import io
+import time
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
+from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
+from starlette.responses import Response
+from starlette.types import Scope
 
 from app.config import settings
+
+_NO_STORE = "no-store, no-cache, must-revalidate, max-age=0"
+
+
+class NoCacheStaticFiles(StaticFiles):
+    """Avatars/banners reuse a user folder; never let browsers/CDN keep the old bytes."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = _NO_STORE
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg",
@@ -143,16 +160,16 @@ def _cover_resize(image: Image.Image, max_size: tuple[int, int]) -> Image.Image:
 async def save_avatar(user_id: int, file: UploadFile) -> str:
     data = await _read_upload(file, max_bytes=AVATAR_MAX_BYTES)
     processed = _process_image(data, max_size=AVATAR_MAX_SIZE, cover=True)
-    relative = f"users/{user_id}/avatar.webp"
-    path = user_media_dir(user_id) / "avatar.webp"
-    path.write_bytes(processed)
+    filename = f"avatar-{time.time_ns()}.webp"
+    relative = f"users/{user_id}/{filename}"
+    (user_media_dir(user_id) / filename).write_bytes(processed)
     return public_url(relative)
 
 
 async def save_banner(user_id: int, file: UploadFile) -> str:
     data = await _read_upload(file, max_bytes=BANNER_MAX_BYTES)
     processed = _process_image(data, max_size=BANNER_MAX_SIZE, cover=True)
-    relative = f"users/{user_id}/banner.webp"
-    path = user_media_dir(user_id) / "banner.webp"
-    path.write_bytes(processed)
+    filename = f"banner-{time.time_ns()}.webp"
+    relative = f"users/{user_id}/{filename}"
+    (user_media_dir(user_id) / filename).write_bytes(processed)
     return public_url(relative)

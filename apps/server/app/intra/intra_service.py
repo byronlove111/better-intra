@@ -140,12 +140,14 @@ def forty_two_get_cached(
     cache_key: str,
     ttl_seconds: float = 600.0,
 ) -> tuple[Any, dict[str, str]]:
-    """Same as forty_two_get, with a short in-memory TTL cache."""
+    """Same as forty_two_get, with a short Redis TTL cache."""
     from app.intra.intra_cache import cache_get, cache_set
 
     cached = cache_get(cache_key)
-    if isinstance(cached, tuple) and len(cached) == 2:
-        return cached  # type: ignore[return-value]
+    if isinstance(cached, list) and len(cached) == 2:
+        payload, headers = cached
+        if isinstance(headers, dict):
+            return payload, headers
 
     result = forty_two_get(access_token, path, params)
     cache_set(cache_key, result, ttl_seconds=ttl_seconds)
