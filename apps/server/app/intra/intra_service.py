@@ -240,6 +240,7 @@ def build_intra_profile(me: dict[str, Any]) -> dict[str, Any]:
                 "level": item.get("level"),
                 "begin_at": item.get("begin_at"),
                 "end_at": item.get("end_at"),
+                # 42 still calls this blackholed_at; on current cursus it is the next milestone.
                 "blackholed_at": item.get("blackholed_at"),
             }
         )

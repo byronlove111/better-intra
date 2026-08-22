@@ -19,7 +19,13 @@ class IntraCursusOut(BaseModel):
     level: float | None = None
     begin_at: datetime | None = None
     end_at: datetime | None = None
-    blackholed_at: datetime | None = None
+    blackholed_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Next milestone deadline from the 42 API (`cursus_users.blackholed_at`). "
+            "Despite the Intra field name, this is not the historic black hole date."
+        ),
+    )
 
 
 class IntraProfileOut(BaseModel):

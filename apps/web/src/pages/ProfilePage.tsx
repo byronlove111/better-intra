@@ -671,14 +671,14 @@ export function ProfilePage() {
 
             <div className="flex flex-col gap-5">
               <SidebarStat
-                label="Black hole"
+                label="Prochaine milestone"
                 value={formatDateOnly(cursus?.blackholed_at)}
                 hint={
                   daysRemaining === null
                     ? undefined
                     : daysRemaining >= 0
                       ? `${daysRemaining} jours restants`
-                      : "Date dépassée"
+                      : "Milestone dépassée"
                 }
               />
               <SidebarStat

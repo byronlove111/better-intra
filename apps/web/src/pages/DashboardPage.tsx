@@ -379,7 +379,7 @@ export function DashboardPage() {
           <div className="flex flex-col gap-10">
               <section className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:grid-cols-3 dark:*:data-[slot=card]:bg-card">
                 <PriorityStat
-                  label="Black hole"
+                  label="Prochaine milestone"
                   icon={Clock3}
                   value={
                     profileRequest.isError && !isPreview
@@ -388,12 +388,12 @@ export function DashboardPage() {
                         ? formatDateOnly(currentCursus?.blackholed_at)
                         : daysRemaining >= 0
                           ? `${daysRemaining} j`
-                          : "Dépassé"
+                          : "Dépassée"
                   }
                   footerTitle={
                     daysRemaining !== null && daysRemaining < 0
-                      ? "Black hole dépassé"
-                      : "Jours restants avant blackhole"
+                      ? "Milestone dépassée"
+                      : "Jours restants avant la prochaine milestone"
                   }
                   footerHint={
                     profileRequest.isError && !isPreview
