@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { FolderKanban, Link2 } from "lucide-react"
 import { useState } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 import { EmptyState } from "@/components/EmptyState"
 import { PagePagination } from "@/components/PagePagination"
@@ -13,7 +13,6 @@ import {
   getMyProjectsPage,
 } from "@/features/profile/profile-api"
 import { formatRelativeAgo } from "@/features/profile/profile-display"
-import { previewProjects } from "@/features/profile/profile-preview"
 import { getApiErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -41,15 +40,11 @@ function getProjectStatus(project: ProfileProject): ProjectStatus {
 }
 
 export function ProjectsPage() {
-  const [searchParams] = useSearchParams()
-  const isPreview =
-    import.meta.env.DEV && searchParams.get("preview") === "projects"
   const [page, setPage] = useState(1)
 
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: !isPreview,
   })
 
   const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
@@ -57,22 +52,18 @@ export function ProjectsPage() {
   const projectsRequest = useQuery({
     queryKey: ["projects", page],
     queryFn: () => getMyProjectsPage(page, PAGE_SIZE),
-    enabled: !isPreview && isIntraLinked,
+    enabled: isIntraLinked,
   })
 
-  const projects = isPreview
-    ? previewProjects
-    : (projectsRequest.data?.items ?? [])
+  const projects = projectsRequest.data?.items ?? []
   const error = getApiErrorMessage(projectsRequest.error)
   const pagination = projectsRequest.data?.meta
-  const totalPages = isPreview
-    ? 1
-    : Math.max(
-        1,
-        Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
-      )
+  const totalPages = Math.max(
+    1,
+    Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
+  )
 
-  if (!isPreview && currentUserRequest.isPending) {
+  if (currentUserRequest.isPending) {
     return (
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
         <p className="text-sm text-muted-foreground">Chargement…</p>
@@ -80,7 +71,7 @@ export function ProjectsPage() {
     )
   }
 
-  if (!isPreview && !isIntraLinked) {
+  if (!isIntraLinked) {
     return (
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
         <div className="flex items-center gap-3">
@@ -119,18 +110,18 @@ export function ProjectsPage() {
             </p>
           </div>
         </div>
-        {!isPreview && pagination?.total != null ? (
+        {pagination?.total != null ? (
           <p className="text-sm tabular-nums text-muted-foreground">
             {pagination.total} projet{pagination.total > 1 ? "s" : ""}
           </p>
         ) : null}
       </div>
 
-      {projectsRequest.isPending && !isPreview ? (
+      {projectsRequest.isPending ? (
         <p className="text-sm text-muted-foreground">
           Chargement des projets…
         </p>
-      ) : error && !isPreview ? (
+      ) : error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
@@ -191,7 +182,7 @@ export function ProjectsPage() {
             currentPage={page}
             totalPages={totalPages}
             onPageChange={setPage}
-            disabled={isPreview || projectsRequest.isPending}
+            disabled={projectsRequest.isPending}
           />
         </div>
       ) : null}

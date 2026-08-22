@@ -19,23 +19,13 @@ export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const preview = new URLSearchParams(location.search).get("preview")
-  const isPreview = import.meta.env.DEV
-    && (
-      preview === "dashboard"
-      || preview === "profile"
-      || preview === "projects"
-      || preview === "evaluations"
-      || preview === "message"
-    )
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: Boolean(getAccessToken()) && !isPreview,
+    enabled: Boolean(getAccessToken()),
   })
   const currentUser = currentUserRequest.data
-  const realtimeEnabled =
-    !isPreview && currentUser?.is_intra_linked === true
+  const realtimeEnabled = currentUser?.is_intra_linked === true
   useRealtimeSocket(realtimeEnabled)
 
   function logout() {
@@ -50,7 +40,6 @@ export function AppLayout() {
     <TooltipProvider>
       <SidebarProvider className="h-svh overflow-hidden">
         <AppSidebar
-          isPreview={isPreview}
           currentUser={currentUser}
           onLogout={logout}
         />
@@ -59,14 +48,12 @@ export function AppLayout() {
             <SidebarTrigger className="-ml-1" />
             <div className="w-full max-w-sm flex-1">
               <UserSearch
-                isPreview={isPreview}
-                canSearch={isPreview || currentUser?.is_intra_linked === true}
+                canSearch={currentUser?.is_intra_linked === true}
               />
             </div>
             <div className="ml-auto">
               <NotificationsMenu
                 currentUser={currentUser}
-                isPreview={isPreview}
               />
             </div>
           </header>

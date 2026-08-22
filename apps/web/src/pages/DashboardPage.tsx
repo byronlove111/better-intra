@@ -40,7 +40,6 @@ import {
   getDashboardOnlineFriends,
   isCorrectionToFinalize,
 } from "@/features/dashboard/dashboard-api"
-import { dashboardPreview } from "@/features/dashboard/dashboard-preview"
 import {
   getMyFriendStats,
   getMyProfile,
@@ -53,7 +52,6 @@ import {
   getDaysRemaining,
   getInitials,
 } from "@/features/profile/profile-display"
-import { previewProjects } from "@/features/profile/profile-preview"
 import { presenceOnlineQueryKey } from "@/features/realtime/presence-cache"
 import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -113,14 +111,11 @@ function formatEvalDay(value: string | null | undefined) {
 
 export function DashboardPage() {
   const [searchParams] = useSearchParams()
-  const isPreview =
-    import.meta.env.DEV && searchParams.get("preview") === "dashboard"
   const [requestStage, setRequestStage] = useState(0)
 
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: !isPreview,
   })
 
   const linkIntraRequest = useMutation({
@@ -132,7 +127,7 @@ export function DashboardPage() {
 
   const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
 
-  const dashboardQueriesEnabled = isIntraLinked && !isPreview
+  const dashboardQueriesEnabled = isIntraLinked
 
   useEffect(() => {
     if (!dashboardQueriesEnabled) return
@@ -207,21 +202,13 @@ export function DashboardPage() {
     }
   })()
   const linkError = getApiErrorMessage(linkIntraRequest.error)
-  const profile = isPreview ? dashboardPreview.profile : profileRequest.data
+  const profile = profileRequest.data
   const intra = profile?.intra
-  const friendStats = isPreview
-    ? dashboardPreview.friendStats
-    : friendStatsRequest.data
-  const events = isPreview ? dashboardPreview.events : (eventsRequest.data ?? [])
-  const evaluations = isPreview
-    ? dashboardPreview.nextEvaluations
-    : (evaluationsRequest.data ?? [])
-  const onlineFriends = isPreview
-    ? dashboardPreview.onlineFriends
-    : (onlineFriendsRequest.data ?? [])
-  const projects = isPreview
-    ? previewProjects.filter((project) => project.status === "in_progress")
-    : (projectsRequest.data ?? [])
+  const friendStats = friendStatsRequest.data
+  const events = eventsRequest.data ?? []
+  const evaluations = evaluationsRequest.data ?? []
+  const onlineFriends = onlineFriendsRequest.data ?? []
+  const projects = projectsRequest.data ?? []
   const currentCursus = getCurrentCursus(intra?.cursus ?? [])
   const currentCampus = intra?.campus[0]
   const levelLabel = currentCursus?.level != null
@@ -229,7 +216,7 @@ export function DashboardPage() {
     : null
   const avatarFallback = getInitials(profile?.display_name ?? profile?.login)
   const friendStatsUnavailable =
-    !isPreview && (friendStatsRequest.isPending || friendStatsRequest.isError)
+    friendStatsRequest.isPending || friendStatsRequest.isError
   const followingCount = friendStatsUnavailable
     ? "—"
     : (friendStats?.following_count ?? 0)
@@ -242,9 +229,9 @@ export function DashboardPage() {
 
   let bioText = profile?.bio?.trim() || "Tu n’as pas encore ajouté de bio."
 
-  if (!isPreview && profileRequest.isPending) {
+  if (profileRequest.isPending) {
     bioText = "Chargement de la bio…"
-  } else if (!isPreview && profileRequest.isError) {
+  } else if (profileRequest.isError) {
     bioText = "La bio est temporairement indisponible."
   }
 
@@ -263,7 +250,7 @@ export function DashboardPage() {
         </p>
       )}
 
-      {!isIntraLinked && !isPreview && (
+      {!isIntraLinked && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-3">
             <Link2 className="text-muted-foreground" />
@@ -299,13 +286,13 @@ export function DashboardPage() {
         </div>
       )}
 
-      {isIntraLinked && !isPreview && profileRequest.isPending && (
+      {isIntraLinked && profileRequest.isPending && (
         <p className="text-sm text-muted-foreground">
           Chargement du Dashboard…
         </p>
       )}
 
-      {!isPreview && profileRequest.isError && (
+      {profileRequest.isError && (
         <p role="alert" className="text-sm text-destructive">
           {getApiErrorMessage(profileRequest.error)}
         </p>
@@ -332,7 +319,7 @@ export function DashboardPage() {
                         {profile?.display_name ?? "Profil Intra"}
                       </h1>
                       <Badge variant="outline" className="tabular-nums">
-                        {profileRequest.isError && !isPreview
+                        {profileRequest.isError
                           ? "—"
                           : `${intra.wallet ?? 0} ₳`}
                       </Badge>
@@ -350,11 +337,9 @@ export function DashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {!isPreview && (
-                    <Button variant="outline" render={<Link to="/profile" />}>
-                      Voir mon profil
-                    </Button>
-                  )}
+                  <Button variant="outline" render={<Link to="/profile" />}>
+                    Voir mon profil
+                  </Button>
                 </div>
               </div>
 
@@ -382,7 +367,7 @@ export function DashboardPage() {
                   label="Prochaine milestone"
                   icon={Clock3}
                   value={
-                    profileRequest.isError && !isPreview
+                    profileRequest.isError
                       ? "—"
                       : daysRemaining === null
                         ? formatDateOnly(currentCursus?.blackholed_at)
@@ -396,7 +381,7 @@ export function DashboardPage() {
                       : "Jours restants avant la prochaine milestone"
                   }
                   footerHint={
-                    profileRequest.isError && !isPreview
+                    profileRequest.isError
                       ? undefined
                       : `Échéance · ${formatDateOnly(currentCursus?.blackholed_at)}`
                   }
@@ -405,7 +390,7 @@ export function DashboardPage() {
                   label="Points de correction"
                   icon={CheckCircle2}
                   value={
-                    profileRequest.isError && !isPreview
+                    profileRequest.isError
                       ? "—"
                       : String(intra.correction_point ?? 0)
                   }
@@ -416,7 +401,7 @@ export function DashboardPage() {
                   label="Niveau"
                   icon={Gauge}
                   value={
-                    profileRequest.isError && !isPreview
+                    profileRequest.isError
                       ? "—"
                       : (levelLabel ?? "—")
                   }
@@ -442,21 +427,19 @@ export function DashboardPage() {
                       Évaluations à venir
                     </h2>
                   </div>
-                  {!isPreview && (
-                    <Link
-                      to="/evaluations"
-                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      Tout voir
-                    </Link>
-                  )}
+                  <Link
+                    to="/evaluations"
+                    className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Tout voir
+                  </Link>
                 </div>
 
-                {evaluationsRequest.isPending && !isPreview ? (
+                {evaluationsRequest.isPending ? (
                   <p className="text-sm text-muted-foreground">
                     Chargement des évaluations…
                   </p>
-                ) : evaluationsRequest.isError && !isPreview ? (
+                ) : evaluationsRequest.isError ? (
                   <p className="text-sm text-muted-foreground">
                     Les évaluations sont temporairement indisponibles.
                   </p>
@@ -528,21 +511,19 @@ export function DashboardPage() {
                         {onlineFriends.length > 1 ? "s" : ""} en ligne
                       </p>
                     </div>
-                    {!isPreview && (
-                      <Link
-                        to="/friends"
-                        className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                      >
-                        Voir
-                      </Link>
-                    )}
+                    <Link
+                      to="/friends"
+                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Voir
+                    </Link>
                   </div>
 
-                  {onlineFriendsRequest.isPending && !isPreview ? (
+                  {onlineFriendsRequest.isPending ? (
                     <p className="text-sm text-muted-foreground">
                       Chargement…
                     </p>
-                  ) : onlineFriendsRequest.isError && !isPreview ? (
+                  ) : onlineFriendsRequest.isError ? (
                     <p className="text-sm text-muted-foreground">
                       Temporairement indisponible.
                     </p>
@@ -601,21 +582,19 @@ export function DashboardPage() {
                         Aujourd’hui sur le campus
                       </p>
                     </div>
-                    {!isPreview && (
-                      <Link
-                        to="/agenda"
-                        className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                      >
-                        Agenda
-                      </Link>
-                    )}
+                    <Link
+                      to="/agenda"
+                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Agenda
+                    </Link>
                   </div>
 
-                  {eventsRequest.isPending && !isPreview ? (
+                  {eventsRequest.isPending ? (
                     <p className="text-sm text-muted-foreground">
                       Chargement…
                     </p>
-                  ) : eventsRequest.isError && !isPreview ? (
+                  ) : eventsRequest.isError ? (
                     <p className="text-sm text-muted-foreground">
                       Temporairement indisponible.
                     </p>
@@ -656,21 +635,19 @@ export function DashboardPage() {
                       Projets en cours
                     </h2>
                   </div>
-                  {!isPreview && (
-                    <Link
-                      to="/projects"
-                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      Tout voir
-                    </Link>
-                  )}
+                  <Link
+                    to="/projects"
+                    className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Tout voir
+                  </Link>
                 </div>
 
-                {projectsRequest.isPending && !isPreview ? (
+                {projectsRequest.isPending ? (
                   <p className="text-sm text-muted-foreground">
                     Chargement des projets…
                   </p>
-                ) : projectsRequest.isError && !isPreview ? (
+                ) : projectsRequest.isError ? (
                   <p className="text-sm text-muted-foreground">
                     Les projets sont temporairement indisponibles.
                   </p>
