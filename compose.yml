@@ -15,6 +15,7 @@ x-server-base: &server-base
     FORTY_TWO_CLIENT_SECRET: ${FORTY_TWO_CLIENT_SECRET:?manquant dans .env}
     FORTY_TWO_REDIRECT_URI: https://${DOMAIN_NAME:?manquant dans .env}/api/auth/callback
     API_KEY_RATE_LIMIT_PER_MINUTE: ${API_KEY_RATE_LIMIT_PER_MINUTE:?manquant dans .env}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
   # Bind mount dev pour le hot reload et le debug.
 #  volumes:
 #    - ./apps/server/app:/app/app
@@ -37,6 +38,17 @@ services:
       retries: 10
       start_period: 30s
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # herite de la meme image que le backend, mais ne fait qu'une migration et s'arrete.
   migrate:
     <<: *server-base
@@ -57,6 +69,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
       interval: 10s

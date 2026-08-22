@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     media_root: str = "media"
     media_url_prefix: str = "/media"
 
+    # Intra API response cache (Redis). Empty = cache disabled.
+    redis_url: str = "redis://localhost:6379/0"
+
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 

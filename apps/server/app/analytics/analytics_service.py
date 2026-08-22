@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from fpdf import FPDF
 from sqlalchemy.orm import Session
 
@@ -182,8 +183,11 @@ def get_my_logtime_analytics(
     from app.intra.intra_cache import cache_get, cache_set
 
     cached = cache_get(cache_key)
-    if isinstance(cached, LogtimeAnalyticsOut):
-        return cached
+    if cached is not None:
+        try:
+            return LogtimeAnalyticsOut.model_validate(cached)
+        except ValidationError:
+            pass
 
     locations = fetch_all_locations(
         access_token,
