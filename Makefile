@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs ps clean certs ci-backend monitoring-up monitoring-down
+.PHONY: help up down restart logs ps clean kill hard-reset certs monitoring-up monitoring-down
 
 help:
 	@echo "BetterIntra — commandes :"
@@ -8,10 +8,11 @@ help:
 	@echo "  make logs     - suit les logs de tous les services"
 	@echo "  make ps       - liste les containers et leur etat"
 	@echo "  make clean    - down + supprime les images buildees (garde le volume Postgres)"
+	@echo "  make kill     - stoppe et supprime TOUS les containers du projet + toutes les images (garde les volumes)"
+	@echo "  make hard-reset - kill puis up : repart de zero sur une base propre"
 	@echo "  make certs    - (re)genere le certificat self-signed du proxy nginx"
 	@echo "  make monitoring-up   - lance Prometheus/Grafana en plus (profile monitoring)"
 	@echo "  make monitoring-down - stoppe les containers du profile monitoring"
-	@echo "  make ci-backend - rejoue en local le job CI des tests backend (cf. .github/workflows/README.md)"
 
 CERT_DIR := infra/nginx/certs
 # Certif self-signed local pour nginx tls:
@@ -52,6 +53,20 @@ ps:
 clean: down
 	$(COMPOSE) down --rmi all
 
+# Nucléaire : stoppe et supprime tous les containers du projet
+# Volumes safe
+kill:
+	@printf "Supprime TOUS les containers et TOUTES les images du projet (volumes conserves). Continuer ? [y/N] "; \
+	read -r reply; \
+	case "$$reply" in \
+		[yY]|[yY][eE][sS]) ;; \
+		*) echo "Annule."; exit 1 ;; \
+	esac
+	$(COMPOSE) --profile monitoring down --rmi all --remove-orphans
+
+# kill puis up, pour repartir sur une base propre.
+hard-reset: kill up
+
 # Profile monitoring : jamais un prerequis de "make up", opt-in seulement.
 monitoring-up:
 	$(COMPOSE) --profile monitoring up -d
@@ -59,30 +74,3 @@ monitoring-up:
 
 monitoring-down:
 	$(COMPOSE) --profile monitoring stop
-
-# Base jetable du job CI backend-tests. Port 5433 : ne gene pas un Postgres local.
-CI_PG := betterintra-ci-pg
-CI_PG_PORT := 5433
-CI_PG_IMAGE := postgres:16-alpine
-CI_DB_URL_BASE := postgresql+psycopg://betterintra:betterintra@localhost
-
-# Meme chaine de commandes que le job backend-tests sur une DB Postgres jetable
-# Nescessite uv et pytest installés sur l'hôte (ou dans un venv) pour lancer les tests
-ci-backend:
-	@if ! $(CONTAINER) image inspect $(CI_PG_IMAGE) >/dev/null 2>&1; then \
-		echo "Image $(CI_PG_IMAGE) absente (~111 Mo), telechargement..."; \
-		$(CONTAINER) pull $(CI_PG_IMAGE) || exit 1; \
-	fi; \
-	echo "Container jetable sur le port $(CI_PG_PORT)."; \
-	$(CONTAINER) rm -f $(CI_PG) >/dev/null 2>&1 || true; \
-	$(CONTAINER) run -d --rm --name $(CI_PG) -p $(CI_PG_PORT):5432 \
-		-e POSTGRES_USER=betterintra -e POSTGRES_PASSWORD=betterintra -e POSTGRES_DB=betterintra_test \
-		$(CI_PG_IMAGE) >/dev/null || exit 1; \
-	trap '$(CONTAINER) stop $(CI_PG) >/dev/null 2>&1' EXIT INT TERM; \
-	for i in $$(seq 1 30); do \
-		$(CONTAINER) exec $(CI_PG) pg_isready -U betterintra -d betterintra_test >/dev/null 2>&1 && break; \
-		sleep 1; \
-	done; \
-	cd apps/server && \
-	uv sync --frozen --group dev && \
-	TEST_DATABASE_URL=$(CI_DB_URL_BASE):$(CI_PG_PORT)/betterintra_test uv run pytest -q
