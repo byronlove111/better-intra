@@ -14,7 +14,6 @@ x-server-base: &server-base
     FORTY_TWO_CLIENT_ID: ${FORTY_TWO_CLIENT_ID:?manquant dans .env}
     FORTY_TWO_CLIENT_SECRET: ${FORTY_TWO_CLIENT_SECRET:?manquant dans .env}
     FORTY_TWO_REDIRECT_URI: https://${DOMAIN_NAME:?manquant dans .env}/api/auth/callback
-    API_KEY_RATE_LIMIT_PER_MINUTE: ${API_KEY_RATE_LIMIT_PER_MINUTE:?manquant dans .env}
     REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
   # Bind mount dev pour le hot reload et le debug.
 #  volumes:

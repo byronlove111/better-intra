@@ -14,7 +14,6 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 os.environ["JWT_SECRET"] = "test-only-jwt-secret-do-not-use-in-prod"
 os.environ["ENVIRONMENT"] = "test"
-os.environ.setdefault("API_KEY_RATE_LIMIT_PER_MINUTE", "60")
 
 import pytest
 from fastapi.testclient import TestClient
