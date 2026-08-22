@@ -6,6 +6,7 @@ x-server-base: &server-base
     ENVIRONMENT: ${ENVIRONMENT:-dev}
     DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-betterintra}:${POSTGRES_PASSWORD:?manquant dans .env}@db:5432/${POSTGRES_DB:-betterintra}
     FRONTEND_URL: https://${DOMAIN_NAME:?manquant dans .env}
+    JWT_SECRET: ${JWT_SECRET:?manquant dans .env}
     FORTY_TWO_CLIENT_ID: ${FORTY_TWO_CLIENT_ID:?manquant dans .env}
     FORTY_TWO_CLIENT_SECRET: ${FORTY_TWO_CLIENT_SECRET:?manquant dans .env}
     FORTY_TWO_REDIRECT_URI: https://${DOMAIN_NAME:?manquant dans .env}/api/auth/callback
