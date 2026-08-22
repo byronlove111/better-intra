@@ -35,12 +35,6 @@ import {
 } from "@/features/chat/chat-api"
 import { applyMessageCreated } from "@/features/chat/chat-cache"
 import { ChatMessageList } from "@/features/chat/ChatMessageList"
-import {
-  chatPreviewConversation,
-  chatPreviewConversations,
-  chatPreviewMe,
-  chatPreviewMessages,
-} from "@/features/chat/chat-preview"
 import { getInitials } from "@/features/profile/profile-display"
 import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -57,18 +51,16 @@ function formatListTime(value: string) {
 function ConversationListItem({
   conversation,
   active,
-  previewHref,
 }: {
   conversation: Conversation
   active: boolean
-  previewHref?: string
 }) {
   const peer = conversation.peer
-  const preview = conversation.last_message?.body ?? "Aucun message"
+  const lastMessageBody = conversation.last_message?.body ?? "Aucun message"
 
   return (
     <Link
-      to={previewHref ?? `/conversations/${conversation.id}`}
+      to={`/conversations/${conversation.id}`}
       className={cn(
         "flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50",
         active && "border-ring bg-muted",
@@ -100,7 +92,9 @@ function ConversationListItem({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm text-muted-foreground">{preview}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {lastMessageBody}
+          </p>
           {conversation.unread_count > 0 && (
             <Badge variant="default" className="shrink-0">
               {conversation.unread_count}
@@ -441,63 +435,8 @@ function NewChatComposer({ currentUserId }: { currentUserId: number }) {
   )
 }
 
-function ChatPreviewPage() {
-  const peer = chatPreviewConversation.peer
-
-  return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
-      <aside className="flex w-full shrink-0 flex-col border-b md:w-80 md:border-r md:border-b-0">
-        <div className="flex items-center gap-2 border-b px-4 py-3">
-          <MessageCircle className="text-muted-foreground" />
-          <div>
-            <h1 className="font-semibold tracking-tight">Messages</h1>
-            <p className="text-xs text-muted-foreground">Preview DEV</p>
-          </div>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
-          {chatPreviewConversations.map((conversation) => (
-            <ConversationListItem
-              key={conversation.id}
-              conversation={conversation}
-              active={conversation.id === chatPreviewConversation.id}
-              previewHref="/conversations?preview=message"
-            />
-          ))}
-        </div>
-      </aside>
-
-      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-        <ChatThreadShell
-          peer={peer}
-          composer={(
-            <ChatComposer
-              disabled
-              pending={false}
-              error={null}
-              onSend={() => {}}
-            />
-          )}
-        >
-          <ChatMessageList
-            messages={chatPreviewMessages}
-            currentUserId={chatPreviewMe.id}
-            peer={peer}
-            me={chatPreviewMe}
-            peerLastReadMessageId={
-              chatPreviewConversation.peer_last_read_message_id
-            }
-          />
-        </ChatThreadShell>
-      </div>
-    </section>
-  )
-}
-
 export function ChatPage() {
   const { conversationId: conversationIdParam } = useParams()
-  const [searchParams] = useSearchParams()
-  const isPreview =
-    import.meta.env.DEV && searchParams.get("preview") === "message"
 
   const conversationId = conversationIdParam
     ? Number.parseInt(conversationIdParam, 10)
@@ -508,19 +447,14 @@ export function ChatPage() {
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: !isPreview,
   })
   const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
 
   const conversationsRequest = useQuery({
     queryKey: conversationsQueryKey,
     queryFn: listConversations,
-    enabled: !isPreview && isIntraLinked,
+    enabled: isIntraLinked,
   })
-
-  if (isPreview) {
-    return <ChatPreviewPage />
-  }
 
   if (currentUserRequest.isPending) {
     return <p className="text-sm text-muted-foreground">Chargement…</p>

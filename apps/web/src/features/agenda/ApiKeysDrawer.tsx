@@ -68,9 +68,15 @@ curl -s -X POST "${apiBase}/api/v1/events" \\
 # DELETE /api/v1/events/:id`
 }
 
+function getAbsoluteApiBaseUrl() {
+  return new URL(getApiBaseUrl(), window.location.origin)
+    .toString()
+    .replace(/\/$/, "")
+}
+
 export function ApiKeysDrawer({ open, onOpenChange }: ApiKeysDrawerProps) {
   const queryClient = useQueryClient()
-  const apiBase = getApiBaseUrl()
+  const apiBase = getAbsoluteApiBaseUrl()
   const [name, setName] = useState("")
   const [nameError, setNameError] = useState<string | null>(null)
   const [createdKey, setCreatedKey] = useState<string | null>(null)

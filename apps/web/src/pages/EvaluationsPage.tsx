@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { ClipboardCheck, Link2 } from "lucide-react"
 import { useState } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 import { EmptyState } from "@/components/EmptyState"
 import { PagePagination } from "@/components/PagePagination"
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/toggle-group"
 import { getCurrentUser } from "@/features/auth/auth-api"
 import { getEvaluationsPage } from "@/features/dashboard/dashboard-api"
-import { previewEvaluations } from "@/features/dashboard/dashboard-preview"
 import { formatDate } from "@/features/profile/profile-display"
 import { getApiErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -40,16 +39,12 @@ function formatEvalDay(value: string | null | undefined) {
 }
 
 export function EvaluationsPage() {
-  const [searchParams] = useSearchParams()
-  const isPreview =
-    import.meta.env.DEV && searchParams.get("preview") === "evaluations"
   const [page, setPage] = useState(1)
   const [view, setView] = useState<EvaluationView>("corrector")
 
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: !isPreview,
   })
 
   const isIntraLinked = currentUserRequest.data?.is_intra_linked === true
@@ -57,25 +52,18 @@ export function EvaluationsPage() {
   const evaluationsRequest = useQuery({
     queryKey: ["evaluations", view, page],
     queryFn: () => getEvaluationsPage(page, PAGE_SIZE, view),
-    enabled: !isPreview && isIntraLinked,
+    enabled: isIntraLinked,
   })
 
-  const evaluations = isPreview
-    ? previewEvaluations
-    : (evaluationsRequest.data?.items ?? [])
+  const evaluations = evaluationsRequest.data?.items ?? []
   const error = getApiErrorMessage(evaluationsRequest.error)
   const pagination = evaluationsRequest.data?.meta
-  const totalPages = isPreview
-    ? 1
-    : Math.max(
-        1,
-        Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
-      )
-  const visibleEvaluations = isPreview
-    ? evaluations.filter((evaluation) => evaluation.role === view)
-    : evaluations
+  const totalPages = Math.max(
+    1,
+    Math.ceil((pagination?.total ?? 0) / (pagination?.page_size ?? PAGE_SIZE)),
+  )
 
-  if (!isPreview && currentUserRequest.isPending) {
+  if (currentUserRequest.isPending) {
     return (
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
         <p className="text-sm text-muted-foreground">Chargement…</p>
@@ -83,7 +71,7 @@ export function EvaluationsPage() {
     )
   }
 
-  if (!isPreview && !isIntraLinked) {
+  if (!isIntraLinked) {
     return (
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-10">
         <div className="flex items-center gap-3">
@@ -129,7 +117,7 @@ export function EvaluationsPage() {
               </p>
             </div>
           </div>
-          {!isPreview && pagination?.total != null ? (
+          {pagination?.total != null ? (
             <p className="text-sm tabular-nums text-muted-foreground">
               {pagination.total} évaluation{pagination.total > 1 ? "s" : ""}
             </p>
@@ -159,15 +147,15 @@ export function EvaluationsPage() {
         </ToggleGroup>
       </div>
 
-      {evaluationsRequest.isPending && !isPreview ? (
+      {evaluationsRequest.isPending ? (
         <p className="text-sm text-muted-foreground">
           Chargement des évaluations…
         </p>
-      ) : error && !isPreview ? (
+      ) : error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
-      ) : visibleEvaluations.length === 0 ? (
+      ) : evaluations.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
           title="Aucune évaluation"
@@ -175,7 +163,7 @@ export function EvaluationsPage() {
         />
       ) : (
         <ul className="flex flex-col">
-          {visibleEvaluations.map((evaluation, index) => {
+          {evaluations.map((evaluation, index) => {
             const peopleLine = view === "corrector"
               ? (evaluation.corrected_logins.length > 0
                 ? evaluation.corrected_logins.map((login) => `@${login}`).join(", ")
@@ -258,7 +246,7 @@ export function EvaluationsPage() {
             currentPage={page}
             totalPages={totalPages}
             onPageChange={setPage}
-            disabled={isPreview || evaluationsRequest.isPending}
+            disabled={evaluationsRequest.isPending}
           />
         </div>
       ) : null}

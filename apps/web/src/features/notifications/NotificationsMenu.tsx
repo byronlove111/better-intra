@@ -29,14 +29,17 @@ const TYPE_LABEL: Record<Notification["type"], string> = {
 
 type NotificationsMenuProps = {
   currentUser: AuthUser | undefined
-  isPreview: boolean
 }
 
-export function NotificationsMenu({
-  currentUser,
-  isPreview,
-}: NotificationsMenuProps) {
-  const canFetch = !isPreview && currentUser?.is_intra_linked === true
+function resolveNotificationUrl(url: string) {
+  if (url.startsWith("/users/")) {
+    return `/profile/${url.slice("/users/".length)}`
+  }
+  return url || "/dashboard"
+}
+
+export function NotificationsMenu({ currentUser }: NotificationsMenuProps) {
+  const canFetch = currentUser?.is_intra_linked === true
 
   const notificationsRequest = useQuery({
     queryKey: ["notifications"],
@@ -50,10 +53,7 @@ export function NotificationsMenu({
   let emptyTitle: string | null = null
   let emptyDescription: string | undefined
 
-  if (isPreview) {
-    emptyTitle = "Aucune notification"
-    emptyDescription = "Aucune notification récente."
-  } else if (currentUser?.is_intra_linked !== true) {
+  if (currentUser?.is_intra_linked !== true) {
     emptyTitle = "Compte 42 requis"
     emptyDescription = "Lie ton compte 42 pour recevoir des notifications."
   } else if (notificationsRequest.isPending) {
@@ -110,7 +110,7 @@ export function NotificationsMenu({
                 <DropdownMenuItem
                   key={notification.id}
                   className="items-start py-2"
-                  render={<Link to={notification.url || "/dashboard"} />}
+                  render={<Link to={resolveNotificationUrl(notification.url)} />}
                 >
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="text-xs text-muted-foreground">

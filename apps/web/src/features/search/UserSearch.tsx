@@ -17,29 +17,11 @@ import {
 } from "@/features/search/user-search-api"
 import { resolveMediaUrl } from "@/lib/api"
 
-const previewUsers: IntraUser[] = [
-  {
-    id: 1,
-    login: "swann",
-    displayname: "Swann Latreche",
-    avatar_url: null,
-    location: "e1r4p7",
-  },
-  {
-    id: 2,
-    login: "alice",
-    displayname: "Alice Student",
-    avatar_url: null,
-    location: "e2r3p4",
-  },
-]
-
 type UserSearchProps = {
-  isPreview: boolean
   canSearch: boolean
 }
 
-export function UserSearch({ isPreview, canSearch }: UserSearchProps) {
+export function UserSearch({ canSearch }: UserSearchProps) {
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
@@ -56,20 +38,18 @@ export function UserSearch({ isPreview, canSearch }: UserSearchProps) {
   const searchRequest = useQuery({
     queryKey: ["intra-users", searchQuery],
     queryFn: () => searchIntraUsers(searchQuery),
-    enabled: canSearch && !isPreview && searchQuery.length >= 2,
+    enabled: canSearch && searchQuery.length >= 2,
   })
 
-  const users = isPreview
-    ? previewUsers.filter((user) => user.login.includes(searchQuery.toLowerCase()))
-    : (searchRequest.data ?? [])
+  const users = searchRequest.data ?? []
 
   let emptyMessage = "Aucun étudiant trouvé."
 
   if (searchQuery.length < 2) {
     emptyMessage = "Écris au moins deux caractères."
-  } else if (!isPreview && searchRequest.isError) {
+  } else if (searchRequest.isError) {
     emptyMessage = "La recherche est temporairement indisponible."
-  } else if (!isPreview && searchRequest.isPending) {
+  } else if (searchRequest.isPending) {
     emptyMessage = "Recherche…"
   }
 
@@ -81,9 +61,7 @@ export function UserSearch({ isPreview, canSearch }: UserSearchProps) {
       onInputValueChange={setQuery}
       onValueChange={(user) => {
         if (!user) return
-        navigate(
-          `/profile/${encodeURIComponent(user.login)}${isPreview ? "?preview=profile" : ""}`,
-        )
+        navigate(`/profile/${encodeURIComponent(user.login)}`)
         setQuery("")
         setSearchQuery("")
       }}

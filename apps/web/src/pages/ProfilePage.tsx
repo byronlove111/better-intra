@@ -7,7 +7,7 @@ import {
   UserRoundPlus,
 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 
 import { EmptyState } from "@/components/EmptyState"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -55,12 +55,7 @@ import {
   getInitials,
   getLastMonthsRange,
   getLevelProgress,
-  getPreviewYearLogtime,
 } from "@/features/profile/profile-display"
-import {
-  getPreviewProfile,
-  previewProjects,
-} from "@/features/profile/profile-preview"
 import { presenceOnlineQueryKey } from "@/features/realtime/presence-cache"
 import { getApiErrorMessage, resolveMediaUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -119,10 +114,7 @@ function SidebarStat({
 
 export function ProfilePage() {
   const { login } = useParams()
-  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
-  const isPreview =
-    import.meta.env.DEV && searchParams.get("preview") === "profile"
   const isOwnProfile = !login
   const profileKey = login ?? "me"
   const [isEditingBio, setIsEditingBio] = useState(false)
@@ -133,20 +125,18 @@ export function ProfilePage() {
   const currentUserRequest = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: !isPreview,
   })
 
   const profileRequest = useQuery({
     queryKey: ["profile", profileKey],
     queryFn: () => (login ? getUserProfile(login) : getMyProfile()),
-    enabled: !isPreview,
   })
   const hasLoadedIntraProfile = Boolean(profileRequest.data?.intra)
 
   const statsRequest = useQuery({
     queryKey: ["friends", "stats", profileKey],
     queryFn: () => (login ? getUserFriendStats(login) : getMyFriendStats()),
-    enabled: !isPreview && hasLoadedIntraProfile,
+    enabled: hasLoadedIntraProfile,
   })
 
   const viewingOwnLogin =
@@ -155,16 +145,10 @@ export function ProfilePage() {
     && currentUserRequest.data.login === login
   const canEditBio =
     (isOwnProfile || viewingOwnLogin)
-    && (
-      isPreview
-      || (
-        currentUserRequest.data?.is_intra_linked === true
-        && profileRequest.data?.is_betterintra_linked !== false
-      )
-    )
+    && currentUserRequest.data?.is_intra_linked === true
+    && profileRequest.data?.is_betterintra_linked !== false
   const canFollow =
-    !isPreview
-    && !isOwnProfile
+    !isOwnProfile
     && !viewingOwnLogin
     && currentUserRequest.data?.is_intra_linked === true
     && Boolean(login)
@@ -219,24 +203,22 @@ export function ProfilePage() {
     queryKey: ["logtime", profileKey, logtimeRange.beginAt],
     queryFn: () =>
       getProfileLogtime(login, logtimeRange.beginAt, logtimeRange.endAt),
-    enabled: !isPreview && hasLoadedIntraProfile,
-    refetchInterval: !isPreview && hasLoadedIntraProfile ? 600_000 : false,
+    enabled: hasLoadedIntraProfile,
+    refetchInterval: hasLoadedIntraProfile ? 600_000 : false,
     refetchIntervalInBackground: false,
   })
 
   const projectsRequest = useQuery({
     queryKey: ["projects", profileKey],
     queryFn: () => getProfileProjects(login),
-    enabled: !isPreview && hasLoadedIntraProfile,
+    enabled: hasLoadedIntraProfile,
   })
 
-  if (!isPreview && profileRequest.isPending) {
+  if (profileRequest.isPending) {
     return <p className="text-sm text-muted-foreground">Chargement du profil…</p>
   }
 
-  const profile = isPreview
-    ? getPreviewProfile(login)
-    : profileRequest.data
+  const profile = profileRequest.data
   const error = getApiErrorMessage(profileRequest.error)
 
   if (!profile || error) {
@@ -249,16 +231,8 @@ export function ProfilePage() {
   const cursus = getCurrentCursus(profile.intra?.cursus ?? [])
   const campus = profile.intra?.campus[0]
   const hasIntraProfile = profile.intra !== null
-  const logtime = isPreview
-    ? getPreviewYearLogtime(logtimeRange.begin, logtimeRange.end)
-    : logtimeRequest.data
-  const projects = isPreview
-    ? [...previewProjects].sort((first, second) =>
-      (first.project_name ?? "").localeCompare(second.project_name ?? "", "fr", {
-        sensitivity: "base",
-      }),
-    )
-    : (projectsRequest.data ?? [])
+  const logtime = logtimeRequest.data
+  const projects = projectsRequest.data ?? []
   const availableCursus = (profile.intra?.cursus ?? []).filter(
     (item) => item.id != null,
   )
@@ -277,17 +251,13 @@ export function ProfilePage() {
   const levelProgress = getLevelProgress(cursus?.level)
   const avatarFallback = getInitials(profile.display_name ?? profile.login)
   const statsUnavailable =
-    !isPreview && (statsRequest.isPending || statsRequest.isError)
+    statsRequest.isPending || statsRequest.isError
   const followingCount = statsUnavailable
     ? "—"
-    : isPreview
-      ? 24
-      : (statsRequest.data?.following_count ?? 0)
+    : (statsRequest.data?.following_count ?? 0)
   const followersCount = statsUnavailable
     ? "—"
-    : isPreview
-      ? 18
-      : (statsRequest.data?.followers_count ?? 0)
+    : (statsRequest.data?.followers_count ?? 0)
   const followError = getApiErrorMessage(followMutation.error)
   const daysRemaining = getDaysRemaining(cursus?.blackholed_at)
   const roleLine = [
@@ -296,7 +266,7 @@ export function ProfilePage() {
     cursus?.name,
   ].filter(Boolean).join(" · ")
 
-  const canEditMedia = canEditBio && !isPreview
+  const canEditMedia = canEditBio
   const bannerSrc = resolveMediaUrl(profile.banner_url, profile.updated_at)
   const avatarSrc = resolveMediaUrl(profile.avatar_url, profile.updated_at)
 
@@ -322,10 +292,6 @@ export function ProfilePage() {
   }
 
   function saveBio() {
-    if (isPreview) {
-      setIsEditingBio(false)
-      return
-    }
     updateBioRequest.mutate(bioDraft.trim())
   }
 
@@ -540,9 +506,9 @@ export function ProfilePage() {
               logtime={logtime}
               begin={logtimeRange.begin}
               end={logtimeRange.end}
-              isLoading={logtimeRequest.isPending && !isPreview}
-              isError={logtimeRequest.isError && !isPreview}
-              showAnalyticsLink={!isPreview && (isOwnProfile || viewingOwnLogin)}
+              isLoading={logtimeRequest.isPending}
+              isError={logtimeRequest.isError}
+              showAnalyticsLink={isOwnProfile || viewingOwnLogin}
             />
 
             <Separator />
@@ -589,11 +555,11 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              {!isPreview && projectsRequest.isPending ? (
+              {projectsRequest.isPending ? (
                 <p className="text-sm text-muted-foreground">
                   Chargement des projets…
                 </p>
-              ) : projectsRequest.isError && !isPreview ? (
+              ) : projectsRequest.isError ? (
                 <p className="text-sm text-muted-foreground">
                   Les projets sont temporairement indisponibles.
                 </p>
@@ -697,7 +663,7 @@ export function ProfilePage() {
               )}
             </div>
 
-            {!isPreview && (isOwnProfile || viewingOwnLogin) ? (
+            {isOwnProfile || viewingOwnLogin ? (
               <>
                 <Separator />
                 <DeleteMyDataButton />

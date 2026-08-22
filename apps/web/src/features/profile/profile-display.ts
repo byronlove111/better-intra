@@ -204,53 +204,6 @@ export function getMonthCalendar(month: Date, logtime: LogtimeData) {
   ]
 }
 
-export function getPreviewLogtime(month: Date): LogtimeData {
-  const daysInMonth = new Date(
-    Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0),
-  ).getUTCDate()
-  const days = Array.from({ length: daysInMonth }, (_, index) => ({
-    date: new Date(
-      Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), index + 1),
-    ).toISOString().slice(0, 10),
-    duration_hours: index % 5 === 0 ? 0 : (index % 4) * 2.5,
-  }))
-
-  return {
-    total_hours: days.reduce((total, day) => total + day.duration_hours, 0),
-    active_days: days.filter((day) => day.duration_hours > 0).length,
-    days,
-  }
-}
-
-export function getPreviewYearLogtime(begin: Date, end: Date): LogtimeData {
-  const days: LogtimeData["days"] = []
-  const cursor = new Date(
-    Date.UTC(begin.getUTCFullYear(), begin.getUTCMonth(), begin.getUTCDate()),
-  )
-  const rangeEnd = new Date(
-    Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
-  )
-  let index = 0
-
-  while (cursor < rangeEnd) {
-    const hours = index % 7 === 0 ? 0 : ((index % 5) + 1) * 1.8
-    days.push({
-      date: cursor.toISOString().slice(0, 10),
-      duration_hours: hours,
-    })
-    cursor.setUTCDate(cursor.getUTCDate() + 1)
-    index += 1
-  }
-
-  return {
-    total_hours: Math.round(
-      days.reduce((total, day) => total + day.duration_hours, 0) * 100,
-    ) / 100,
-    active_days: days.filter((day) => day.duration_hours > 0).length,
-    days,
-  }
-}
-
 export function getLogtimeColor(hours: number) {
   if (hours === 0) return "bg-muted"
   if (hours < 3) return "bg-primary/25"

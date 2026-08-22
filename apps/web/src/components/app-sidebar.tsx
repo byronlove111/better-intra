@@ -54,22 +54,21 @@ type NavItem = {
 }
 
 type AppSidebarProps = {
-  isPreview: boolean
   currentUser: AuthUser | undefined
   onLogout: () => void
 }
 
-function buildNavItems(isPreview: boolean): NavItem[] {
+function buildNavItems(): NavItem[] {
   return [
     {
       title: "Dashboard",
-      to: isPreview ? "/dashboard?preview=dashboard" : "/dashboard",
+      to: "/dashboard",
       icon: LayoutDashboard,
       match: (pathname) => pathname === "/dashboard",
     },
     {
       title: "Messages",
-      to: isPreview ? "/conversations?preview=message" : "/conversations",
+      to: "/conversations",
       icon: MessageCircle,
       match: (pathname) => pathname.startsWith("/conversations"),
     },
@@ -87,7 +86,7 @@ function buildNavItems(isPreview: boolean): NavItem[] {
     },
     {
       title: "Projets",
-      to: isPreview ? "/projects?preview=projects" : "/projects",
+      to: "/projects",
       icon: FolderKanban,
       match: (pathname) => pathname === "/projects",
     },
@@ -99,7 +98,7 @@ function buildNavItems(isPreview: boolean): NavItem[] {
     },
     {
       title: "Évaluations",
-      to: isPreview ? "/evaluations?preview=evaluations" : "/evaluations",
+      to: "/evaluations",
       icon: ClipboardCheck,
       match: (pathname) => pathname === "/evaluations",
     },
@@ -107,11 +106,9 @@ function buildNavItems(isPreview: boolean): NavItem[] {
 }
 
 function NavUser({
-  isPreview,
   currentUser,
   onLogout,
 }: {
-  isPreview: boolean
   currentUser: AuthUser | undefined
   onLogout: () => void
 }) {
@@ -120,10 +117,10 @@ function NavUser({
   const displayName =
     currentUser?.display_name
     ?? currentUser?.login
-    ?? (isPreview ? "Preview" : "Compte")
-  const login = currentUser?.login ?? (isPreview ? "preview" : null)
+    ?? "Compte"
+  const login = currentUser?.login ?? null
   const handle = login ? `@${login}` : "Mon profil"
-  const profileTo = isPreview ? "/profile?preview=profile" : "/profile"
+  const profileTo = "/profile"
 
   return (
     <SidebarMenu>
@@ -213,12 +210,11 @@ function NavUser({
 }
 
 export function AppSidebar({
-  isPreview,
   currentUser,
   onLogout,
 }: AppSidebarProps) {
   const location = useLocation()
-  const items = buildNavItems(isPreview)
+  const items = buildNavItems()
 
   return (
     <Sidebar collapsible="icon">
@@ -273,7 +269,6 @@ export function AppSidebar({
 
       <SidebarFooter>
         <NavUser
-          isPreview={isPreview}
           currentUser={currentUser}
           onLogout={onLogout}
         />

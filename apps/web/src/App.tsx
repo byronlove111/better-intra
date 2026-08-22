@@ -19,21 +19,10 @@ import { TermsPage } from "@/pages/TermsPage"
 function RootRedirect() {
   const location = useLocation()
   const params = new URLSearchParams(location.search)
-  const preview = params.get("preview")
   const intra = params.get("intra")
   const reason = params.get("reason")
 
   const next = new URLSearchParams()
-  if (import.meta.env.DEV && (
-    preview === "dashboard"
-    || preview === "profile"
-    || preview === "message"
-  )) {
-    if (preview === "message") {
-      return <Navigate to="/conversations?preview=message" replace />
-    }
-    next.set("preview", "dashboard")
-  }
   // Preserve OAuth callback flags from GET /auth/callback → /?intra=...
   if (intra === "linked" || intra === "error") {
     next.set("intra", intra)
