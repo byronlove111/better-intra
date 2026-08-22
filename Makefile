@@ -55,7 +55,8 @@ clean: down
 # Profile monitoring : jamais un prerequis de "make up", opt-in seulement.
 monitoring-up:
 	$(COMPOSE) --profile monitoring up -d
-	@echo "Prometheus : http://localhost:9090 (pas de port publie -> exec docker ou tunnel ssh en attendant Grafana)"
+	@echo "Grafana    : https://{DOMAIN_NAME}/admin/grafana/  (identifiants : ADMIN_USER / ADMIN_PASSWORD de ton .env)"
+	@echo "Prometheus : pas de port publie -> exec docker ou tunnel ssh"
 
 monitoring-down:
 	$(COMPOSE) --profile monitoring stop

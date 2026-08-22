@@ -130,6 +130,54 @@ services:
       retries: 5
       start_period: 10s
 
+  # Metriques par container (CPU/RAM/reseau/disk I/O),
+  # Pas de healthcheck :
+  # l'image cAdvisor n'embarque pas de shell/wget pour en faire un.
+  #
+  # Les deux mounts ci-dessous sont casses en rootless Podman sur cet host
+  # (docker.sock -> socket Podman root inaccessible en permission ; pas de
+  # /var/lib/docker du tout) — retires pour rester portable. Ce qu'on perd
+  # sans eux :
+  #   - /var/run/docker.sock : noms de containers lisibles dans les metriques
+  #     (labels Docker/Podman API) — sans, cAdvisor tague par ID de cgroup.
+  #   - /var/lib/docker : stats disque du storage-driver (poids des layers
+  #     d'images) — pas dans le scope du dashboard vise (CPU/RAM/reseau).
+  # A reactiver au cas par cas si l'host cible (Docker "vrai", ou Podman
+  # rootful) le permet.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    profiles: ["monitoring"]
+    volumes:
+      - /sys:/sys:ro
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - /var/lib/docker:/var/lib/docker:ro
+    restart: unless-stopped
+
+  # Dashboards. Jamais de port publie directement : servi derriere le proxy
+  # en sous-chemin /admin/grafana/ (cf. infra/nginx/nginx.conf).
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?manquant dans .env}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: https://${DOMAIN_NAME:?manquant dans .env}/admin/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 volumes:
   db_data:
   prometheus_data:
+  grafana_data:
