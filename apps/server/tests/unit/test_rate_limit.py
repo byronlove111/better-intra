@@ -12,7 +12,7 @@ from app.config import settings
 @pytest.fixture(autouse=True)
 def reset_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
     rate_limit._hits.clear()
-    monkeypatch.setattr(settings, "api_key_rate_limit_per_minute", 3)
+    monkeypatch.setattr(type(settings), "api_key_rate_limit_per_minute", 3)
     yield
     rate_limit._hits.clear()
 

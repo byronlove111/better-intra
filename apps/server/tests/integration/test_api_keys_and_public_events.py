@@ -139,7 +139,7 @@ def test_api_key_rate_limit(
     user_a: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(settings, "api_key_rate_limit_per_minute", 3)
+    monkeypatch.setattr(type(settings), "api_key_rate_limit_per_minute", 3)
     raw_key = _create_api_key(client, user_a["access_token"])["key"]
     headers = {"X-API-Key": raw_key}
 
