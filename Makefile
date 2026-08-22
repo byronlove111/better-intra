@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs ps clean certs ci-backend
+.PHONY: help up down restart logs ps clean certs ci-backend monitoring-up monitoring-down
 
 help:
 	@echo "BetterIntra — commandes :"
@@ -9,6 +9,8 @@ help:
 	@echo "  make ps       - liste les containers et leur etat"
 	@echo "  make clean    - down + supprime les images buildees (garde le volume Postgres)"
 	@echo "  make certs    - (re)genere le certificat self-signed du proxy nginx"
+	@echo "  make monitoring-up   - lance Prometheus/Grafana en plus (profile monitoring)"
+	@echo "  make monitoring-down - stoppe les containers du profile monitoring"
 	@echo "  make ci-backend - rejoue en local le job CI des tests backend (cf. .github/workflows/README.md)"
 
 CERT_DIR := infra/nginx/certs
@@ -49,6 +51,14 @@ ps:
 # Ne touche pas au volume de données Postgres.
 clean: down
 	$(COMPOSE) down --rmi all
+
+# Profile monitoring : jamais un prerequis de "make up", opt-in seulement.
+monitoring-up:
+	$(COMPOSE) --profile monitoring up -d
+	@echo "Prometheus : http://localhost:9090 (pas de port publie -> exec docker ou tunnel ssh en attendant Grafana)"
+
+monitoring-down:
+	$(COMPOSE) --profile monitoring stop
 
 # Base jetable du job CI backend-tests. Port 5433 : ne gene pas un Postgres local.
 CI_PG := betterintra-ci-pg
