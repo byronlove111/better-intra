@@ -33,7 +33,6 @@ Si une seule manque ou est vide, `docker compose up` refuse de démarrer -> `.en
 | `JWT_SECRET` / `JWT_ALGORITHM` / `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` / `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Signature des tokens d'auth côté `backend` |
 | `FORTY_TWO_CLIENT_ID` / `FORTY_TWO_CLIENT_SECRET` | Identifiants de ton app OAuth 42 (https://profile.intra.42.fr/oauth/applications) — à remplir toi-même, jamais en clair dans git |
 | `FORTY_TWO_REDIRECT_URI` | Dérivée de `DOMAIN_NAME` dans `compose.yml` (`https://${DOMAIN_NAME}/api/auth/callback`) — doit être **exactement identique** à ce qui est déclaré côté 42, voir ci-dessous |
-| `API_KEY_RATE_LIMIT_PER_MINUTE` | Rate limit des clés API publiques côté `backend` |
 | `REDIS_URL` | Cache TTL des réponses Intra (service Compose `redis`). Défaut : `redis://redis:6379/0` |
 
 

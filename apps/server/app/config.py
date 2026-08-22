@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,8 +26,8 @@ class Settings(BaseSettings):
     forty_two_token_url: str = "https://api.intra.42.fr/oauth/token"
     forty_two_api_base_url: str = "https://api.intra.42.fr/v2"
 
-    # Public API (per-user API keys)
-    api_key_rate_limit_per_minute: int = 60
+    # Public API rate limit (not an env var — change here if needed)
+    api_key_rate_limit_per_minute: ClassVar[int] = 60
 
     # Local media (avatar / banner uploads)
     media_root: str = "media"
