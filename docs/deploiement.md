@@ -73,7 +73,6 @@ make up
 | `backend` (FastAPI) | API | https://localhost:8443/api/... (via le proxy) — aucun port publié directement sur l'hôte |
 | `migrate` (one-shot) | Applique les migrations Alembic, puis sort | pas de port — voir « Migrations » |
 | `db` (Postgres 16) | Base de données | interne au réseau Docker uniquement (pas de port publié) |
-| `adminer` (provisoire) | Visualiseur de tables | http://localhost:8081, **uniquement** après `make db-ui` — prévu pour être retiré une fois le seeding testé |
 
 `proxy` route par préfixe (`infra/nginx/nginx.conf`) : `/api/` vers `backend` (le slash final sur `proxy_pass` fait sauter le préfixe — le backend ne connaît que des routes à la racine, `/health`, `/auth/callback`...), tout le reste vers `web`.
 
@@ -150,16 +149,8 @@ make logs      # suit les logs de tous les services (Ctrl+C pour sortir, ne stop
 make ps        # liste les containers et leur état
 make clean     # down + supprime les images buildées (garde le volume Postgres)
 make certs     # (re)génère le certificat HTTPS local si absent
-make db-ui     # lance Adminer sur http://localhost:8081 (visualiseur de tables)
-make db-ui-down # stoppe Adminer
 make ci-backend # rejoue en local le job CI des tests backend
 ```
-
-### Visualiser les tables (Adminer)
-
-Entrer le nom de la db, l'user et le mot de passe (les `POSTGRES_*` du `.env`) pour visualiser les tables dans l'UI Adminer.
-
-**Provisoire** : dépannage en attendant mieux (schéma généré en Mermaid, ou autre visualiseur). Se retire en supprimant le service `adminer` du compose et les deux cibles `make`.
 
 ## Le lancement manuel sans Docker reste disponible
 
@@ -181,7 +172,7 @@ Rien n'oblige à passer par Compose : Postgres via Homebrew + `uv run uvicorn` e
 ## Ce qui n'est pas encore fait (prochaines étapes DevOps)
 
 - **CI d'infra** : les tests backend tournent sur chaque PR (voir « Intégration continue »), mais rien ne vérifie encore que l'image build, que les migrations Alembic passent, ni que la stack complète répond. C'est le second job à écrire.
-- **Outils de visualisation des tables** et documentation du schéma (ERD généré) — `adminer` est un pansement provisoire.
+- **Outils de visualisation des tables** et documentation du schéma (ERD généré) — retiré (`adminer`), à remplacer par un schéma Mermaid ou un autre visualiseur si besoin.
 - **Secrets Compose** : `JWT_SECRET` et `FORTY_TWO_CLIENT_SECRET` transitent en clair dans le fichier d'environnement du container `backend`. Les secrets Compose (`secrets:` + convention `_FILE`) seraient plus propres, mais demandent que `app/config.py` sache lire une valeur depuis un fichier — à arbitrer avec Malik.
 - Seed / données de démo, éventuelle machine de démo déjà chaude.
 - Endpoints WebSocket (chat, notifs, online) : le backend a déjà l'implémentation (`app/realtime/`, `app/chat/`, DM + presence), et le `proxy` est déjà prêt à les faire passer (upgrade HTTP→WS géré dans `infra/nginx/nginx.conf` sur `/api/`, forcément en `wss://` côté navigateur puisque tout passe par HTTPS) — mais rien côté front (`apps/web`) ne les consomme encore.
@@ -199,7 +190,6 @@ Déjà réglé :
 - ~~Port `8080` (HTTP) du proxy~~ — retiré de `compose.yml`, plus rien ne publie le port 80 côté hôte.
 
 Encore ouvert :
-- **Adminer sur `127.0.0.1:8081`** en HTTP clair, avec un accès complet en écriture à la base — à retirer avant la correction (ou profiler différemment).
 - **CORS large** : `allow_methods=["*"]` / `allow_headers=["*"]` avec `allow_credentials=True` dans `apps/server/app/main.py`. Sans vrai risque tant que tous les points d'entrée exposés sont en HTTPS, mais à resserrer si possible.
 
 Le reste (cert self-signé, pas de headers HTTP genre HSTS/CSP) n'a pas besoin d'être traité : la machine reste `localhost`, pas de vrai domaine public à durcir.
