@@ -1,32 +1,24 @@
-# la migration et le backend ont la meme base
-# les deux services vont hériter de la meme image et des memes volumes.
+# la migration et le backend ont la meme base a heriter
 x-server-base: &server-base
   build: ./apps/server
   image: ${COMPOSE_PROJECT_NAME:-better-intra}-server
   environment:
-    ENVIRONMENT: ${ENVIRONMENT:?manquant dans .env}
-    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?manquant dans .env}:${POSTGRES_PASSWORD:?manquant dans .env}@db:5432/${POSTGRES_DB:?manquant dans .env}
+    ENVIRONMENT: ${ENVIRONMENT:-dev}
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-betterintra}:${POSTGRES_PASSWORD:?manquant dans .env}@db:5432/${POSTGRES_DB:-betterintra}
     FRONTEND_URL: https://${DOMAIN_NAME:?manquant dans .env}
-    JWT_SECRET: ${JWT_SECRET:?manquant dans .env}
-    JWT_ALGORITHM: ${JWT_ALGORITHM:?manquant dans .env}
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:?manquant dans .env}
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:?manquant dans .env}
     FORTY_TWO_CLIENT_ID: ${FORTY_TWO_CLIENT_ID:?manquant dans .env}
     FORTY_TWO_CLIENT_SECRET: ${FORTY_TWO_CLIENT_SECRET:?manquant dans .env}
     FORTY_TWO_REDIRECT_URI: https://${DOMAIN_NAME:?manquant dans .env}/api/auth/callback
     REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-  # Bind mount dev pour le hot reload et le debug.
-#  volumes:
-#    - ./apps/server/app:/app/app
-#    - ./apps/server/alembic:/app/alembic
 
 services:
   db:
-    image: postgres:16-alpine
+    container_name: db
+    image: docker.io/library/postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?manquant dans .env}
+      POSTGRES_USER: ${POSTGRES_USER:-betterintra}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manquant dans .env}
-      POSTGRES_DB: ${POSTGRES_DB:?manquant dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:-betterintra}
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -38,7 +30,8 @@ services:
       start_period: 30s
 
   redis:
-    image: redis:7-alpine
+    container_name: redis
+    image: docker.io/library/redis:7-alpine
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -46,9 +39,10 @@ services:
       timeout: 3s
       retries: 10
 
-  # herite de la meme image que le backend, mais ne fait qu'une migration et s'arrete.
+  # herite de la meme image que le backend, mais ne fait qu'une migration stop
   migrate:
     <<: *server-base
+    container_name: migrate
     entrypoint: ["uv", "run", "alembic", "upgrade", "head"]
     restart: "no"
     depends_on:
@@ -57,9 +51,7 @@ services:
   # Api Server
   backend:
     <<: *server-base
-    # --reload dans le cas ou on veut hotreload en dev
-#    command: ["--reload", "--reload-dir", "/app/app"]
-#    ports:
+    container_name: backend
     restart: unless-stopped
     depends_on:
       db:
@@ -75,7 +67,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # build Vite static :dist/ → /usr/share/nginx/html.
+  # build Vite static
   web:
     build:
       context: ./apps/web
@@ -95,7 +87,8 @@ services:
       start_period: 10s
 
   proxy:
-    image: nginx:1.27-alpine
+    container_name: proxy
+    image: docker.io/library/nginx:1.27-alpine
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./infra/nginx/certs:/etc/nginx/certs:ro
@@ -117,7 +110,8 @@ services:
   # Collecte des metriques. Jamais un
   # demarre avec "make monitoring-up".
   prometheus:
-    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    image: docker.io/prom/prometheus:v2.55.1
     profiles: ["monitoring"]
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
